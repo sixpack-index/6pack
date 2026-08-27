@@ -1,0 +1,335 @@
+/* =========================================================================
+   Hero.
+
+   Everything people come here for lies on it: the promise, the contract
+   address, the buy button, the balance and the figure. The calculator
+   used to be a separate section further down, and you had to scroll to
+   reach the headline number.
+
+   There is one layout rule: **the tops and the bottoms of both columns
+   line up**. That is why the caption lives in the deal bar and not above
+   the balance — otherwise it would push the left column down relative to
+   the right one, and the row would look off by eye.
+   ========================================================================= */
+
+/* ---------- deal bar ---------- */
+
+/* One row of three parts: the promise, the caption, the contract with the
+   buy button.
+
+   The caption sits in the middle not for looks but to close a hole. When
+   it lived under the heading, the bar split in two, the left half grew to
+   the caption's width, and the contract address flew off to the far edge:
+   on a 1440 screen there were 483 empty pixels between the heading and
+   the contract. Now the caption takes that space and the contract stands
+   right after it — still to the right of the promise, but next to it
+   rather than half a bar away. */
+.dealbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: clamp(1rem, 2.4vw, 2rem);
+  row-gap: .7rem;
+  /* The bar no longer has a border.
+
+     Three of them came out in a row: the bar's border, the calculator's
+     and the stage's — one under another, and the hero read as a stack of
+     boxes rather than as a single place. A heading inside a box was also
+     crushing itself: the "based on live volume" caption ran into the
+     right edge and barely fit.
+
+     The bar is seamless now. Only the contract is set apart: it is the
+     one thing here that has to stand out as a separate object — people
+     click it and copy it. */
+  border: 0;
+  background: none;
+  padding: 0 0 clamp(.9rem, 2vw, 1.3rem);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-bone) 7%, transparent);
+}
+
+.dealbar .hh {
+  font-family: var(--font-disp);
+  font-weight: 900;
+  font-stretch: 78%;
+  letter-spacing: -.045em;
+  line-height: .95;
+  font-size: clamp(1.5rem, 3.6vw, 2.5rem);
+  color: var(--color-bone);
+}
+.dealbar .hh i { font-style: normal; color: var(--color-neon); }
+
+.dealbar .sub {
+  margin: 0;
+  max-width: 68ch;
+  font-size: .82rem;
+  line-height: 1.6;
+  color: var(--color-h2c);
+}
+
+/* The contract and the buy button in a row, not stacked: they are on the
+   same level as the heading, and a vertical stack there would blow up the
+   height of the bar. */
+.dealbar .dr {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* The contract address does not stretch the bar: a long string is cut off
+   with an ellipsis instead of pushing the buy button past the edge. */
+.dealbar .ca {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: 0;
+  min-width: 0;
+}
+.dealbar .ca-v {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 22rem;
+}
+
+.dealbar .acts { margin: 0; display: flex; gap: .5rem; }
+.dealbar .acts:empty { display: none; }
+.dealbar .acts .btn { margin: 0; }
+
+/* Below 1200px the three parts no longer fit on one line: the caption
+   squeezes down to four words per line and the bar grows taller. So it
+   moves down, and the heading and the contract stay on one line. */
+@media (max-width: 1200px) {
+  .dealbar { grid-template-columns: minmax(0, auto) auto; justify-content: space-between; }
+  /* The areas are assigned explicitly. Automatic placement follows the
+     order in the markup, and there the caption stands between the heading
+     and the contract: taking up the full width, it pushed the contract
+     onto a third row, where it ended up under the heading instead of
+     beside it. */
+  .dealbar .hh  { grid-area: 1 / 1; }
+  .dealbar .dr  { grid-area: 1 / 2; }
+  .dealbar .sub { grid-area: 2 / 1 / 3 / -1; max-width: 68ch; }
+}
+
+@media (max-width: 900px) {
+  .dealbar { grid-template-columns: 1fr; }
+  .dealbar .hh  { grid-area: auto; }
+  .dealbar .dr  { grid-area: auto; justify-content: flex-start; }
+  .dealbar .sub { grid-area: auto; }
+  /* On a narrow screen the address wraps instead of being cut off with an
+     ellipsis. An ellipsis needs a set width; without one a forty-two
+     character string simply pushed the page wider — a measurement at
+     390px showed 54 extra pixels sideways. The tape's overflow kept it
+     from actually shifting sideways, so it was invisible to the eye, but
+     horizontal scrolling on a phone would have appeared from any other
+     wide element. */
+  .dealbar .ca-v {
+    max-width: none;
+    white-space: normal;
+    word-break: break-all;
+    text-overflow: clip;
+  }
+}
+
+/* ---------- the row: balance and figure ---------- */
+
+.hero-g {
+  /* The balance is given more room than the figure. An even split did
+     not work: "500,000,000" at 58 pixels does not fit into a card 297px
+     wide, the number tore the ticker off itself, and the captions broke
+     onto three lines. The numbers are the main thing here, the figure is
+     background. */
+  grid-template-columns: minmax(0, 1.24fr) minmax(0, 1fr);
+  /* Stretch, not centre: otherwise columns of different heights drift
+     apart vertically, and "level" turns into "roughly level". */
+  align-items: stretch;
+  gap: clamp(.9rem, 2.2vw, 1.6rem);
+}
+
+/* min-width: 0 is required, and this is not belt and braces.
+
+   A grid item's default minimum width equals the width of its content,
+   and inside there is an input field: <input> has an intrinsic width of
+   about twenty characters, and it does not shrink. The column ran into
+   that and grew wider than the screen — a measurement at 390 pixels gave
+   445, that is, the page was being blown 55 pixels sideways. Again this
+   was not visible to the eye: the scrolling tape with its own overflow
+   keeps things from actually shifting sideways.
+
+   A zero minimum removes that floor and lets the shrinking pass down to
+   the field. */
+.calccol { display: grid; min-width: 0; }
+.hero .calc,
+.hero .calc-in { min-width: 0; }
+.hero .calc-amount { width: 100%; }
+
+/* minmax(0,1fr), not 1fr: a plain 1fr will not let a column get narrower
+   than its content, and the left card holds "19,650,000" at forty pixels.
+   Because of that the cards came out different widths — 307 and 286 for
+   the same fraction. A zero minimum removes that floor. */
+.hero .calc {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(.9rem, 2.2vw, 1.6rem);
+  /* The top margin is removed: it shifted the left column 19 pixels down
+     relative to the sphere, and the row stopped being level. The distance
+     to the bar is set by the row itself. */
+  margin-top: 0;
+}
+
+/* The card captions do not break in half. In a half-width column "you
+   hold" and "not connected · drag" wrapped onto two lines, and the
+   headers of the two cards ended up at different heights — a level row
+   falling apart over small stuff. */
+.hero .cbox .hdr { align-items: baseline; gap: .6rem; }
+.hero .cbox .hdr > span { white-space: nowrap; }
+.hero .cbox .hdr > .ann { overflow: hidden; text-overflow: ellipsis; }
+
+/* The large number has to fit on one line together with the ticker.
+
+   The 3.6rem ceiling was sized for a card spanning the full page width.
+   Here there are two of them in half a row, and at that size
+   "500,000,000 DIMEHOOD" takes 295 pixels of the 300 available — the
+   ticker broke onto a second line, and the card itself grew taller with
+   it and broke the row. */
+.hero .amt { font-size: clamp(1.5rem, 2.5vw, 2.4rem); margin: .5rem 0 .2rem; }
+.hero .amt small { font-size: .32em; }
+
+/* The columns under the number are two captions side by side, each one or
+   two lines. "trailing yield, per epoch" broke onto three and stretched
+   the card. */
+.hero .cs .k { font-size: .56rem; letter-spacing: .1em; }
+
+/* The figure stretches to the full height of the neighbouring column.
+
+   The aspect ratio is dropped on purpose: with it the box set its own
+   height and did not line up with the balance. Here the height is
+   dictated by the row, and the figure fits into what it is given. */
+.hero .stage {
+  aspect-ratio: auto;
+  height: 100%;
+  min-height: 22rem;
+}
+
+/* The font size here sets the SIZE of the figure, not just its
+   graininess: the character grid is constant, so a small font gives a
+   small sphere in an empty box. It used to be clamp(4.4px,.92vw,9px) —
+   the sphere took up barely half the box.
+   The ceiling is 11px, not 13: at 13 the sphere outgrew the box and had
+   its top and bottom cut off. A clipped figure looks not large but
+   broken.
+   Line height is exactly 1, as in the base styles: the figure works out
+   the number of rows from the height of the box by dividing it by the
+   font size. Any excess over one means slightly more rows are drawn than
+   fit, and the last one is cut off at the bottom. */
+.hero .stage .ascii { font-size: clamp(6px, 1.05vw, 11px); line-height: 1; }
+
+@media (max-width: 900px) {
+  .hero-g { grid-template-columns: 1fr; }
+  /* min-height has to go along with the stretching. Otherwise it stays
+     stronger than the aspect ratio, and the width is computed FROM it:
+     352px / 0.82 = 429px, that is, the box stuck out past a phone screen
+     by 54 pixels. The tape with its overflow kept it from shifting
+     sideways, so the breakage was not visible to the eye — it was found
+     by measuring the width of the document. */
+  .hero .stage { height: auto; min-height: 0; aspect-ratio: 1 / .82; }
+  .hero .stage .ascii { font-size: clamp(4.4px, 1.6vw, 10px); }
+}
+@media (max-width: 620px) {
+  .hero .calc { grid-template-columns: 1fr; }
+}
+
+
+/* ---------- caption above the hero ----------
+   "based on live volume at the published rate" stood on the same line as
+   "v1.0" and ran into the right edge: on a medium screen it barely fit,
+   on a narrow one it went past the boundary. The cause is
+   `white-space: nowrap` on .corners span from base.css — a forty
+   character string did not wrap at all.
+
+   We allow wrapping and cap the width: the caption keeps to its own third
+   and does not fight the version number. */
+.hero > .corners .mid {
+  white-space: normal;
+  max-width: 34ch;
+  text-align: right;
+  line-height: 1.5;
+}
+
+@media (max-width: 620px) {
+  .hero > .corners .mid { max-width: none; text-align: left; }
+}
+
+/* =========================================================================
+   THE STAGE WHILE IT LOADS
+
+   The markup used to hold a baked frame of that same figure made of
+   characters — 4645 characters of text. It was shown until three.js, the
+   can model and the basket composition arrived, that is, for the first
+   few seconds for every visitor. It looked as though the site itself were
+   that green blob, and then out of nowhere it turned into packaging.
+
+   Worse, a static frame is impossible to tell apart from a broken one: it
+   does not move in exactly the same way an animation that failed to start
+   would not move.
+
+   In its place there is now an honest loading state. It says that work is
+   under way and does not pretend to be content.
+
+   The bar runs on its own and does NOT show a fraction: nobody knows that
+   fraction — three different things are loading from three places, and
+   any number here would be made up. A running bar means "in progress",
+   and nothing more.
+   ========================================================================= */
+.stage-boot {
+  position: absolute;
+  inset: auto 0 auto 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  justify-items: center;
+  gap: .8rem;
+  pointer-events: none;
+  transition: opacity .35s ease;
+}
+
+.stage-boot-bar {
+  position: relative;
+  width: min(9rem, 42%);
+  height: 2px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-bone) 8%, transparent);
+}
+
+.stage-boot-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  background: var(--color-neon);
+  animation: stage-boot-run 1.25s cubic-bezier(.65, 0, .35, 1) infinite;
+}
+
+@keyframes stage-boot-run {
+  0%   { left: -42%; }
+  100% { left: 100%; }
+}
+
+.stage-boot-txt {
+  font-family: var(--font-mono);
+  font-size: .53rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--color-mute);
+}
+
+/* Removed as soon as a canvas has appeared in the stage. The class is set
+   by stage.js: it alone knows that the first frame has actually been
+   drawn — you cannot judge by the element appearing, the canvas exists
+   before the first render. */
+.stage.ready .stage-boot { opacity: 0; }
+
+/* For anyone bothered by motion the bar stands still and the label stays.
+   Its meaning is in the text, not in the running. */
+@media (prefers-reduced-motion: reduce) {
+  .stage-boot-bar i { animation: none; left: 0; width: 100%; opacity: .4; }
+}

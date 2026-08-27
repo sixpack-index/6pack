@@ -1,0 +1,33 @@
+/* =========================================================================
+   MONOSPACE — CAPTIONS, NUMBERS, TABLES
+
+   There is more of it on the page than of anything else: the captions
+   under the hero, the tickers in the tape, the columns inside the cards,
+   the whole ledger. The archive came with JetBrains Mono — the font from
+   every second site about crypto and code. It is not a bad font, it is
+   recognisably the default one: with it the site reads as assembled out
+   of ready-made parts.
+
+   Azeret Mono is in place instead: geometric, with unusual tails on the
+   digits, magazine rather than terminal.
+
+   There used to be four font pairings and three monospaces here, and they
+   were picked with a parameter in the URL. The choice has been made, so
+   one is left: every extra variant is another set of rules you have to
+   avoid breaking with any nearby edit, for the sake of a look nobody else
+   will ever see.
+
+   What changes is the --font-mono variable, not individual rules: it is
+   already handed out across the whole layout, and spot substitutions
+   would drift apart from it on the very first new block.
+
+   The font may fail to arrive: someone else's server, someone else's
+   network. While it is on its way the text is drawn with the fallback
+   from the stack instead of disappearing — that is what Google Fonts does
+   by default, and it is right: an invisible caption is worse than a
+   caption in the wrong font.
+   ========================================================================= */
+
+:root {
+  --font-mono: 'Azeret Mono', ui-monospace, monospace;
+}

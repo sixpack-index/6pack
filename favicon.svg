@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <!-- Tab icon. Same idea as the badge in the header: a dark tile and one
+       shape in the SIGNAL accent. A letter rather than a numeral, on
+       purpose: at 16 pixels two digits merge into a blob, while a single
+       glyph stays readable.
+       Drawn as an outline, not as text - there is no font inside an icon
+       file, and text would be rendered with whatever the system picks.
+       Careful with comments here: two hyphens in a row close an XML
+       comment early and break the file. -->
+  <rect width="48" height="48" rx="10" fill="#102419"/>
+  <g transform="translate(3.2 0) skewX(-12)" stroke="#00e05a" stroke-width="5" fill="none" stroke-linecap="square">
+    <path d="M16 14 V34"/>
+    <path d="M16 14 H23 A10 10 0 0 1 23 34 H16"/>
+  </g>
+</svg>

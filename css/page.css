@@ -1,0 +1,182 @@
+/* =========================================================================
+   PAGE BACKGROUNDS
+
+   Before this file the page had no layer of its own: a solid
+   `--color-ink` fill from the header down to the footer, inherited from
+   the archive. Because of it the cards, the calculator and the sections
+   all lay on one and the same sheet, and there was nothing for the eye to
+   catch on while scrolling — the whole thing looked like one endless
+   plane.
+
+   WHAT WAS DONE AND WHY EXACTLY THIS WAY
+
+   1. The light is a separate layer on body::before, pinned to the screen.
+
+      Not on body itself and not as section backgrounds. The reason is
+      technical: a background nailed to the screen with
+      `background-attachment: fixed` makes the browser repaint it on
+      every frame of scrolling, and on a phone that shows up as
+      stuttering. A separate layer with `position: fixed` gets moved onto
+      the browser's own compositing surface and is not touched during
+      scrolling at all.
+
+   2. Grain, and NOT engraving. The first attempt was the same hatching
+      as on the cards, only paler. That was a mistake: a card lies on the
+      page, and if they are made of the same material the object stops
+      separating from the background — two hatchings at the same angle
+      add up into ripple. The page has to be air, not a surface, so what
+      is here is noise with no period.
+
+   3. Section bands. Neighbouring sections get slightly different tone,
+      and while scrolling you can see that you are moving rather than
+      standing still. The difference is deliberately small: a striped
+      page reads as a table.
+
+   4. A vignette around the edges of the screen. The same device as on
+      the cards, only softer: it gathers attention towards the middle and
+      hides the fact that the columns do not reach the edges on a wide
+      monitor.
+
+   WHAT IS NOT HERE
+
+   A dot grid — the most worn-out background on the web, it reads as "the
+   texture was not chosen". And engraving: it is taken by the cards, see
+   point 2.
+   ========================================================================= */
+
+/* ---------- light layer: pinned to the screen, does not scroll ---------- */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    /* warm accent at top right — from the same place that lights the cards */
+    radial-gradient(58% 42% at 88% -4%,
+      color-mix(in srgb, var(--color-neon) 13%, transparent) 0%,
+      transparent 70%),
+    /* cool fill light at the bottom left: two sources of different
+       temperature give depth, one source gives a flat wash */
+    radial-gradient(52% 46% at -6% 92%,
+      color-mix(in srgb, var(--color-h2c) 8%, transparent) 0%,
+      transparent 72%),
+    /* vignette */
+    radial-gradient(120% 90% at 50% 32%,
+      transparent 0%, transparent 46%,
+      color-mix(in srgb, #000 48%, transparent) 100%);
+}
+
+/* ---------- grain layer ----------
+   NOT engraving. Engraving is already on the cards, and a second one of
+   the same kind underneath them gives ripple: two hatchings at the same
+   angle add up into moire, and at different angles they fight each other.
+   A page and an object lying on it cannot be made of the same material.
+
+   What is here is film grain — noise with no period. There is nothing for
+   the eye to catch on, so it does not read as a pattern at all: it works
+   as air, not as a surface. It also gets rid of the banding that large
+   gradients produce on eight-bit screens.
+
+   It scrolls together with the page: grain that stays put while the
+   content moves reads as dirt on the glass. */
+body::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .16;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url%28#n%29' opacity='.42'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+/* The layers lie underneath the content, so body needs a reference point
+   for absolute and a stacking depth of its own. */
+body {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--color-block) 22%, var(--color-ink)) 0%,
+      var(--color-ink) 34%,
+      var(--color-ink) 76%,
+      color-mix(in srgb, var(--color-ink-2) 70%, var(--color-ink)) 100%)
+    fixed;
+}
+
+/* ---------- section bands ----------
+   Even sections are a little deeper than odd ones. The difference is at
+   the limit of noticeability: you do not examine it, you feel it while
+   scrolling. */
+.sheet:nth-of-type(even) {
+  /* Not a solid fill but a gradient with dissolved edges: the solid one
+     gave two hard horizontal steps of colour — at the top and at the
+     bottom of the band — and they read as the edges of a box rather than
+     a change of tone. */
+  background:
+    linear-gradient(180deg,
+      transparent 0%,
+      color-mix(in srgb, #000 18%, transparent) 14%,
+      color-mix(in srgb, #000 18%, transparent) 86%,
+      transparent 100%);
+}
+
+/* The line between sections already exists in base.css (`border-top`),
+   but it sinks into the new background. We add a lit edge above it — that
+   way the boundary reads as the seam between two surfaces rather than a
+   random stroke. */
+.sheet {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-bone) 4%, transparent);
+}
+
+/* ---------- hero ----------
+   It no longer has a glow of its own, and that is a fix, not a
+   simplification.
+
+   There was a `.hero::before` with radial blobs. The pseudo-element lies
+   inside the hero's box, and that box is the content column with hard
+   edges: the gradient inside it was cut off exactly at its boundary. The
+   result was a light rectangle as wide as the column — that is, a drawn
+   frame around the hero that nobody had asked for.
+
+   A soft blob clipped along a straight line always reads as a rectangle.
+   Light has to live on a full-screen layer where there is nothing to clip
+   it — and it already does, above. */
+
+/* ---------- header and tape ----------
+   The header sits on a scrolling background and has to stay readable when
+   a light patch travels underneath it. Blur instead of an opaque fill: a
+   fill would cut the header off from the page with a band of a different
+   colour. */
+.nav {
+  background: color-mix(in srgb, var(--color-ink) 72%, transparent);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+          backdrop-filter: blur(10px) saturate(1.2);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-bone) 6%, transparent);
+}
+
+.tape {
+  background: color-mix(in srgb, var(--color-ink-2) 82%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+          backdrop-filter: blur(8px);
+}
+
+/* ---------- footer ----------
+   It goes off into the dark: the end of the page should read as an end. */
+.foot {
+  background:
+    linear-gradient(180deg,
+      transparent 0%,
+      color-mix(in srgb, #000 32%, transparent) 100%);
+}
+
+/* ---------- gentle on those who asked for less motion ----------
+   Backgrounds pinned to the screen are motion relative to the content.
+   For someone who has "reduce motion" set in their system it gets in the
+   way just as much as animation does. */
+@media (prefers-reduced-motion: reduce) {
+  body { background-attachment: scroll; }
+  body::before { position: absolute; }
+}

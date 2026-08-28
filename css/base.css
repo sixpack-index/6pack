@@ -40,3 +40,21 @@
 /* The header mark is an image, not letters. A textual "6PK" said nothing;
    the can is recognisable and matches the browser tab. */
 img.badge { padding: 0; background: none; object-fit: cover; }
+
+/* The wordmark in the header. The small badge is gone: a 27px can next to
+   the word itself added nothing and took up room. The name is larger now
+   — in the header the mark is the word. */
+.wm { font-size: 1.5rem; }
+
+/* The X button. It was put in the markup and never given a single style
+   rule, so a link wrapping a bare icon collapsed and read as missing.
+   Styled like its neighbours: a square the height of the wallet button. */
+.xbtn {
+  flex: none; width: 34px; height: 34px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--color-rule-2); color: var(--color-h2c);
+  transition: all .15s;
+}
+.xbtn svg { width: 15px; height: 15px; display: block; }
+.xbtn:hover { color: var(--color-neon); border-color: var(--color-neon); }
+.xbtn.blink { border-color: var(--color-neon); color: var(--color-neon); }

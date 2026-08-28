@@ -333,3 +333,47 @@
 @media (prefers-reduced-motion: reduce) {
   .stage-boot-bar i { animation: none; left: 0; width: 100%; opacity: .4; }
 }
+
+
+/* =========================================================================
+   CONTRACT BAR
+
+   Before: the address and three actions of equal weight in a row — copy,
+   explorer and buy. You could not tell a link from a button, or the main
+   action from the rest, because they all weighed the same.
+
+   Now: a frame with its own background and exactly two buttons. The
+   address itself links to the explorer — a separate "explorer" word was a
+   third element explaining what the address already said. Buy carries the
+   accent, copy a plain outline: one main action, seen first.
+   ========================================================================= */
+.dealbar .dr {
+  border: 1px solid var(--color-rule-2);
+  background: var(--color-ink-2);
+  padding: .5rem .5rem .5rem .85rem;
+  gap: .75rem;
+}
+.dealbar .ca { gap: .55rem; }
+.dealbar .ca-k {
+  font-family: var(--font-mono); font-size: .54rem; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--color-mute);
+}
+.dealbar .ca-v {
+  font-family: var(--font-mono); font-size: .72rem; color: var(--color-h1c);
+  border-bottom: 1px dashed var(--color-rule-2); padding-bottom: 1px;
+  transition: color .15s, border-color .15s;
+}
+.dealbar .ca-v:hover { color: var(--color-neon); border-bottom-color: var(--color-neon); }
+.dealbar .ca-copy {
+  font-family: var(--font-mono); font-size: .58rem; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--color-h2c); background: none;
+  border: 1px solid var(--color-rule-2); padding: .5rem .8rem;
+  cursor: pointer; white-space: nowrap; transition: all .15s;
+}
+.dealbar .ca-copy:hover { color: var(--color-neon); border-color: var(--color-neon); }
+.dealbar .ca-copy.bad { color: var(--color-h2c); border-color: var(--color-h2c); }
+
+@media (max-width: 700px) {
+  .dealbar .dr { align-items: stretch; flex-direction: column; }
+  .dealbar .acts .btn { width: 100%; text-align: center; }
+}

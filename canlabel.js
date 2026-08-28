@@ -199,7 +199,7 @@ function panel(g, x, w, hFull, seat, P, isFront) {
 }
 
 /** The label canvas. seat: { n, ticker, iconImg } */
-export function labelCanvas(seat, scale = 1) {
+export function labelCanvas(seat, scale = 1, { onlyFront = false } = {}) {
   const c = document.createElement('canvas');
   c.width = W * scale; c.height = H * scale;
   const g = c.getContext('2d');
@@ -212,8 +212,21 @@ export function labelCanvas(seat, scale = 1) {
   bg.addColorStop(0, P.BLOCK); bg.addColorStop(.55, P.INK); bg.addColorStop(1, '#050505');
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
 
+  /* onlyFront — for a still frame: the mark, the avatar, the header.
+
+     On the site the can rotates, so print goes on all three panels —
+     otherwise half a turn shows a blank side. In a still frame that
+     backfires literally: the can is round, and through the gaps between
+     the front cans you see slices of the neighbouring panels and of the
+     back row. It reads as clutter.
+
+     For those frames print the front only. That is also the truer thing:
+     the back row faces away, and the back of a can carries no print. */
   const pw = W / PANELS;
-  for (let i = 0; i < PANELS; i++) panel(g, i * pw, pw, H, seat, P, i === FRONT_PANEL);
+  for (let i = 0; i < PANELS; i++) {
+    if (onlyFront && i !== FRONT_PANEL) continue;
+    panel(g, i * pw, pw, H, seat, P, i === FRONT_PANEL);
+  }
 
   g.fillStyle = 'rgba(255,255,255,.06)';
   for (let i = 0; i < PANELS; i++) g.fillRect(i * pw, H * .075, 1, H * .85);
@@ -229,8 +242,8 @@ export function labelCanvas(seat, scale = 1) {
   return c;
 }
 
-export function labelTexture(THREE, seat, scale = 1) {
-  const t = new THREE.CanvasTexture(labelCanvas(seat, scale));
+export function labelTexture(THREE, seat, scale = 1, opts = {}) {
+  const t = new THREE.CanvasTexture(labelCanvas(seat, scale, opts));
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8;
   t.wrapS = THREE.RepeatWrapping;          // around: repeat, the seam meets

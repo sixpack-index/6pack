@@ -182,7 +182,6 @@ async function state() {
     config: {
       token: s.token || '',
       vault: s.vault || '',
-      theme: s.theme || '',
       note: s.note || '',
       buy: s.buy || '',
     },

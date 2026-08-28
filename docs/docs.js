@@ -1,16 +1,11 @@
 /* =========================================================================
-   Страница документации. Ей нужно немного: помнить выбранный акцент,
-   вести оглавление и не молчать в ответ на кнопку кошелька.
+   The documentation page. It needs little: to keep the table of contents
+   and not to stay silent in answer to the wallet button.
    ========================================================================= */
 
 const BRAND = { name: '6PACK', ticker: '6PACK' };
 
-/* Тема выбрана на главной и лежит в localStorage — здесь её только читаем.
-   Иначе документация открывалась бы в другом цвете, чем сайт. */
-try {
-} catch (_) { /* приватный режим */ }
-
-/* Оглавление подсвечивает раздел, который сейчас на экране. */
+/* The table of contents highlights the section now on the screen. */
 const links = [...document.querySelectorAll('.docs-toc a')];
 const targets = links
   .map(a => document.querySelector(a.getAttribute('href')))
@@ -27,7 +22,7 @@ if (targets.length && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
   targets.forEach(t => io.observe(t));
 }
 
-/* Никаких молчащих кнопок: подключать нечего — так и говорим. */
+/* No silent buttons: there is nothing to connect to — so we say so. */
 const connect = document.querySelector('.connect');
 if (connect) {
   connect.addEventListener('click', e => {
@@ -39,9 +34,9 @@ if (connect) {
 }
 
 
-/* Кнопка кошелька есть и здесь: человек, читающий правила, чаще всего
-   следующим шагом хочет проверить свой баланс. Отдельной логики не надо —
-   вся она в wallet.js. */
+/* The wallet button is here too: a person reading the rules most often
+   wants to check their own balance as the next step. No separate logic is
+   needed — all of it is in wallet.js. */
 if (window.SixpackWallet) {
   window.SixpackWallet.wire();
   window.SixpackWallet.restore();

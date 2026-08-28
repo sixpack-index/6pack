@@ -1,44 +1,46 @@
-/* УПАКОВКА 6PACK — шесть банок корзины одним предметом.
+/* 6PACK PACKAGING — the basket's six cans as a single object.
 
-   Модель банки: «Aluminium can 500ml», YouniqueIdeaStudio, CC-BY-4.0.
-   Условие лицензии — указание автора на самой странице.
+   Can model: "Aluminium can 500ml", YouniqueIdeaStudio, CC-BY-4.0.
+   The licence requires crediting the author on the page itself.
 
-   ПРО ФАЙЛ СО SKETCHFAB. В нём две запечённые ловушки:
-     • узел Sketchfab_model несёт произвольную матрицу поворота — модель
-       загружали в наклонённой позе, и поза сохранилась в файле;
-     • узел RootNode масштабирует в 1000 раз (0.01 × 100000).
-   Поэтому иерархия отбрасывается целиком, банка собирается из двух голых
-   геометрий, и они нормируются один раз при загрузке. Меши чистые:
-   ось +Z, высота 162.3 мм, диаметр 65.9 мм. Дальше всё в долях высоты.
+   ABOUT THE SKETCHFAB FILE. It has two traps baked into it:
+     • the Sketchfab_model node carries an arbitrary rotation matrix — the
+       model was uploaded in a tilted pose, and the pose was saved in it;
+     • the RootNode node scales by a factor of 1000 (0.01 × 100000).
+   So the hierarchy is discarded entirely, the can is assembled from two bare
+   geometries, and they are normalised once at load time. The meshes are
+   clean: +Z axis, height 162.3 mm, diameter 65.9 mm. From there on
+   everything is in fractions of the height.
 
-   ПРО КОМПОНОВКУ. Первый заход поднимал задний ряд, чтобы читались все
-   шесть банок сразу. От этого отказались: получалась витрина, а не
-   упаковка. Здесь банки стоят вплотную, как в настоящем сикспаке, а все
-   шесть показывает не расстановка, а полный оборот — и картонная обхватка,
-   на которой напечатан состав.
+   ABOUT THE LAYOUT. The first attempt raised the back row so that all six
+   cans could be read at once. That was dropped: it came out as a display
+   stand, not a pack. Here the cans stand flush, as in a real six-pack, and
+   what shows all six is not the arrangement but a full turn — and the
+   cardboard sleeve with the holdings printed on it.
    ========================================================================= */
 
 import { labelTexture, sleeveFace, sleeveSide, LABEL_FACTS } from './canlabel.js';
 
 /* =========================================================================
-   ПОЧИНКА РАЗВЁРТКИ ГОРЛЫШКА
+   FIXING THE NECK UV UNWRAP
 
-   Над прямой стенкой у модели идёт плечо — сужение к крышке высотой около
-   15 мм. Замер по буферу: на 142 мм координата V равна 0.991, на 147 мм
-   доходит до 1.000, а на 162 мм снова 0.000. То есть плечо прогоняет через
-   себя ВЕСЬ диапазон текстуры сверху вниз и сминает целую этикетку в
-   пятнадцатимиллиметровую полоску.
+   Above the straight wall the model has a shoulder — a taper to the lid
+   about 15 mm high. Measured from the buffer: at 142 mm the V coordinate is
+   0.991, at 147 mm it reaches 1.000, and at 162 mm it is back to 0.000. That
+   is, the shoulder runs the ENTIRE texture range through itself from top to
+   bottom and crushes a whole label into a fifteen-millimetre band.
 
-   Именно это выглядело как «белая полоса над этикеткой»: не блик и не
-   заворот текстуры, а раздавленная в ленту картинка — при увеличении в ней
-   различимы иконка и буквы. Ни зажим края, ни смена материала тут не
-   помогают: значения V остаются в пределах [0,1], и любая текстура
-   размажется одинаково.
+   This is exactly what looked like a "white stripe above the label": not a
+   highlight and not texture wrap-around, but a picture crushed into a ribbon
+   — zoom in and the icon and the letters are still distinguishable. Neither
+   edge clamping nor changing the material helps here: the V values stay
+   within [0,1], and any texture will smear the same way.
 
-   Чиним координаты меша один раз при загрузке: всё, что не принадлежит
-   прямой стенке, получает V крайней строки холста, а она нарочно закрашена
-   цветом металла. Стенка определяется по радиусу — на плече и донышке он
-   меньше, и это надёжнее порога по высоте, который пришлось бы подбирать.
+   We fix the mesh coordinates once at load time: everything that does not
+   belong to the straight wall gets the V of the canvas's edge row, and that
+   row is deliberately painted the colour of metal. The wall is identified by
+   radius — on the shoulder and the base it is smaller, and that is more
+   reliable than a height threshold, which would have to be tuned.
    ========================================================================= */
 function fixShoulderUV(THREE, geo) {
   const pos = geo.attributes.position, uv = geo.attributes.uv;
@@ -53,7 +55,7 @@ function fixShoulderUV(THREE, geo) {
 
   let fixed = 0;
   for (let i = 0; i < pos.count; i++) {
-    if (Math.hypot(pos.getX(i), pos.getZ(i)) >= wall) continue;   // это стенка
+    if (Math.hypot(pos.getX(i), pos.getZ(i)) >= wall) continue;   // this is the wall
     uv.setY(i, pos.getY(i) > 0 ? 1 : LABEL_FACTS.WALL_V0);
     fixed++;
   }
@@ -61,37 +63,38 @@ function fixShoulderUV(THREE, geo) {
   return fixed;
 }
 
-const CAN_D = 0.407;            // диаметр банки в долях её высоты (66/162)
-const D = CAN_D + 0.012;        // шаг: банки почти касаются, как в упаковке
-const ROW_Z = D;                // ряды тоже вплотную — это настоящий 3×2
+const CAN_D = 0.407;            // can diameter in fractions of its height (66/162)
+const D = CAN_D + 0.012;        // pitch: cans nearly touch, as in a real pack
+const ROW_Z = D;                // rows are flush too — this is a true 3×2
 
-/* Обхватка. Высота 0.36 от банки: у настоящей упаковки картон закрывает
-   низ и оставляет открытыми плечи и крышки — по ним пачка и узнаётся.
-   Первый заход дал 0.42, и картон резал тикеры пополам. Эта цифра связана
-   с PANEL_U в canlabel.js: там рисунок этикетки поднят ровно над этой
-   чертой. Меняешь здесь — меняй и там. */
+/* The sleeve. Height 0.36 of the can: on a real pack the cardboard covers
+   the bottom and leaves the shoulders and lids open — that is how a pack is
+   recognised. The first attempt gave 0.42 and the cardboard cut the tickers
+   in half. This figure is tied to PANEL_U in canlabel.js: there the label
+   artwork is lifted to sit exactly above that line. Change it here, change
+   it there. */
 const SLEEVE_H = 0.36;
-const SLEEVE_PAD = 0.028;       // насколько картон выступает за банки
-const SLEEVE_BOTTOM = -0.5;     // низ картона вровень с дном банок
+const SLEEVE_PAD = 0.028;       // how far the cardboard sticks out past the cans
+const SLEEVE_BOTTOM = -0.5;     // cardboard bottom flush with the cans' bottoms
 
-/* Куда смотрит лицевая панель этикетки при нулевом повороте банки.
+/* Where the label's front panel faces at zero can rotation.
 
-   Замерено по буферу модели, а не подобрано рендерами: центр лицевой
-   панели приходится на U = 1/6, а этой координате в развёртке отвечает
-   угол −118.1° вокруг вертикали. Значит банку надо довернуть на +118.1°,
-   чтобы лицо смотрело в камеру. Развёртка начинается не с той стороны,
-   что обращена к зрителю, и угадать это нельзя. */
+   Measured from the model's buffer, not tuned by renders: the centre of the
+   front panel falls at U = 1/6, and in the unwrap that coordinate answers to
+   an angle of −118.1° about the vertical. So the can has to be turned by a
+   further +118.1° for the face to look into the camera. The unwrap does not
+   begin on the side turned towards the viewer, and that cannot be guessed. */
 const FRONT_TURN = 2.0617;      // +118.1°
 
-/* Геометрии грузятся один раз и переиспользуются всеми шестью банками:
-   шесть копий одной сетки — это шесть лишних мегабайт и ничего взамен. */
+/* The geometries are loaded once and reused by all six cans: six copies of
+   one mesh is six extra megabytes and nothing in return. */
 export async function loadCan(THREE, GLTFLoader, url) {
   const gl = await new GLTFLoader().loadAsync(url);
   const geos = {};
   gl.scene.traverse(o => { if (o.isMesh) geos[o.material.name] = o.geometry; });
-  if (!geos.Material || !geos.aluminium) throw new Error('в модели нет ожидаемых мешей');
+  if (!geos.Material || !geos.aluminium) throw new Error('the model is missing the expected meshes');
 
-  const m = new THREE.Matrix4().makeRotationX(-Math.PI / 2);   // ось +Z → +Y
+  const m = new THREE.Matrix4().makeRotationX(-Math.PI / 2);   // +Z axis → +Y
   const body = geos.Material.clone().applyMatrix4(m);
   const lid = geos.aluminium.clone().applyMatrix4(m);
   body.computeBoundingBox();
@@ -108,16 +111,17 @@ export async function loadCan(THREE, GLTFLoader, url) {
 }
 
 /* =========================================================================
-   СВЕТ ДЛЯ МЕТАЛЛА
+   LIGHT FOR THE METAL
 
-   Крышка — полированный алюминий. Без карты окружения металл в three
-   показывает только блики от источников: широкий кант ловил их целиком и
-   выходил белой лентой над этикеткой — то, что читалось как «недокрашено».
-   Дело было не в текстуре: сама текстура на кант не заходит.
+   The lid is polished aluminium. Without an environment map, metal in three
+   shows only the highlights from the light sources: the wide rim caught them
+   whole and came out as a white ribbon above the label — the thing that read
+   as "unpainted". It was not the texture: the texture itself never reaches
+   the rim.
 
-   Настоящее решение — дать металлу что отражать. Небольшая карта
-   окружения, сгенерированная из холста: тёмный низ, светлый верх, полоса
-   акцента. Тогда кант отражает сцену, а не вспыхивает.
+   The real fix is to give the metal something to reflect. A small
+   environment map generated from a canvas: dark at the bottom, light at the
+   top, a band of accent. Then the rim reflects the scene instead of flaring.
    ========================================================================= */
 export function makeEnv(THREE, renderer) {
   const c = document.createElement('canvas');
@@ -125,17 +129,17 @@ export function makeEnv(THREE, renderer) {
   const g = c.getContext('2d');
 
   const sky = g.createLinearGradient(0, 0, 0, 128);
-  sky.addColorStop(0, '#4a4a42');       // потолок — главный источник
+  sky.addColorStop(0, '#4a4a42');       // ceiling — the main source
   sky.addColorStop(.42, '#22221c');
-  sky.addColorStop(.55, '#111009');     // линия горизонта
+  sky.addColorStop(.55, '#111009');     // the horizon line
   sky.addColorStop(1, '#080805');
   g.fillStyle = sky; g.fillRect(0, 0, 256, 128);
 
-  /* Мягкая полоса акцента: даёт канту цветной отблеск вместо белого.
-     Цвет из темы, как и на этикетках, — иначе при смене темы металл
-     отражал бы жёлтый на зелёном сайте. Рисуем полосу с прозрачностью
-     через globalAlpha: цвет темы приходит строкой любого формата, и
-     собрать из него rgba() вручную нельзя. */
+  /* A soft band of accent: it gives the rim a coloured glint instead of a
+     white one. The colour comes from the theme, as on the labels — otherwise
+     a theme switch would leave the metal reflecting yellow on a green site.
+     We draw the band with transparency via globalAlpha: the theme colour
+     arrives as a string in any format, and rgba() cannot be built from it. */
   const accent = getComputedStyle(document.documentElement)
     .getPropertyValue('--color-neon').trim() || '#ccff00';
   g.save();
@@ -162,29 +166,29 @@ function makeCan(THREE, geos, seat, scale) {
   g.add(
     new THREE.Mesh(geos.body, new THREE.MeshStandardMaterial({
       map: labelTexture(THREE, seat, scale),
-      /* Этикетка — краска на металле, а не сам металл. На 0.35 она блестела
-         как зеркало и топила текст. */
+      /* The label is paint on metal, not the metal itself. At 0.35 it shone
+         like a mirror and drowned the text. */
       metalness: .10, roughness: .55,
     })),
     new THREE.Mesh(geos.lid, new THREE.MeshStandardMaterial({
-      /* Тон темнее настоящего алюминия и шероховатость выше. Полированный
-         светлый металл на тёмной банке пересвечивался кантом. */
+      /* A tone darker than real aluminium and a higher roughness. Polished
+         light metal on a dark can blew out along the rim. */
       color: 0x8b9296, metalness: .85, roughness: .42,
     })));
   return g;
 }
 
-/* Картонная обхватка. Коробка с шестью материалами: лицо и спина печатные,
-   торцы узкие, верх и низ не рисуются вовсе — сквозь них видно банки, и
-   любая заливка там читалась бы крышкой коробки. */
+/* The cardboard sleeve. A box with six materials: face and back printed,
+   the ends narrow, top and bottom not drawn at all — the cans show through
+   there, and any fill would read as the lid of a box. */
 function makeSleeve(THREE, seats, scale) {
   const w = D * 3 + SLEEVE_PAD * 2;
   const d = ROW_Z * 2 + SLEEVE_PAD * 2;
   const box = new THREE.BoxGeometry(w, SLEEVE_H, d);
 
-  /* Холсты рисуются под НАСТОЯЩЕЕ соотношение своей грани. Раньше оба были
-     фиксированного размера, и текстура растягивалась по ширине: буквы на
-     лице выходили шире, чем задуманы, а на торцах — уже. */
+  /* The canvases are drawn to the REAL ratio of their own face. Both used to
+     be a fixed size, and the texture stretched across the width: letters on
+     the face came out wider than intended, and on the ends narrower. */
   const face = new THREE.CanvasTexture(sleeveFace(seats, { aspect: w / SLEEVE_H, scale }));
   const side = new THREE.CanvasTexture(sleeveSide({ aspect: d / SLEEVE_H, scale }));
   for (const t of [face, side]) { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; }
@@ -194,33 +198,33 @@ function makeSleeve(THREE, seats, scale) {
   const flank = new THREE.MeshStandardMaterial({ map: side, ...paper });
   const none = new THREE.MeshStandardMaterial({ visible: false });
 
-  /* Порядок граней в BoxGeometry: +X, −X, +Y, −Y, +Z, −Z.
-     Печатное лицо смотрит на зрителя (+Z) и в спину (−Z) — как на
-     настоящей упаковке, иначе полоборота зритель видит пустой картон. */
+  /* Face order in BoxGeometry: +X, −X, +Y, −Y, +Z, −Z.
+     The printed face looks at the viewer (+Z) and at the back (−Z) — as on
+     a real pack, otherwise for half a turn the viewer sees blank cardboard. */
   const mesh = new THREE.Mesh(box, [flank, flank, none, none, printed, printed]);
   mesh.position.y = SLEEVE_BOTTOM + SLEEVE_H / 2;
   return mesh;
 }
 
 /**
- * Собранная упаковка. seats — шесть мест корзины по порядку.
- * Возвращает группу и функцию кадра.
+ * The assembled pack. seats — the basket's six seats in order.
+ * Returns the group and a frame function.
  */
 export function buildPack(THREE, geos, seats, { scale = 2 } = {}) {
   const pack = new THREE.Group();
   const cans = [];
 
   seats.slice(0, 6).forEach((seat, i) => {
-    const col = i % 3, row = (i / 3) | 0;      // 0 — передний ряд
+    const col = i % 3, row = (i / 3) | 0;      // 0 — the front row
     const can = makeCan(THREE, geos, seat, scale);
     can.position.set((col - 1) * D, 0, row ? -ROW_Z / 2 : ROW_Z / 2);
-    /* Банки развёрнуты лицом наружу: передний ряд к зрителю, задний — от
-       него, как расставляют настоящую упаковку в витрине. Иконка теперь
-       печатается на одной панели, и если банку повернуть произвольно, она
-       окажется на скрытом боку.
+    /* The cans are turned face outwards: the front row towards the viewer,
+       the back row away from it, the way a real pack is set out in a shop
+       window. The icon is now printed on one panel, and if a can is turned
+       arbitrarily it ends up on the hidden side.
 
-       FRONT_TURN — поправка на то, где именно оказывается лицевая панель
-       при нулевом повороте. Замерена рендером, а не подобрана на глаз. */
+       FRONT_TURN is the correction for where the front panel actually ends
+       up at zero rotation. Measured by render, not tuned by eye. */
     can.rotation.y = FRONT_TURN + (row ? Math.PI : 0);
     pack.add(can);
     cans.push(can);
@@ -228,19 +232,19 @@ export function buildPack(THREE, geos, seats, { scale = 2 } = {}) {
 
   pack.add(makeSleeve(THREE, seats, scale));
 
-  /* Кадр: ровный полный оборот.
+  /* The frame: an even full turn.
 
-     Пробовались полуобороты с остановкой лицом — чтобы иконку, которая
-     теперь печатается на одной панели, можно было разглядеть подольше.
-     Решение отменено сознательно: предмет, который замирает и дёргается,
-     притягивает взгляд и спорит с текстом первого экрана, а ровное
-     вращение остаётся фоном. Что иконка видна не всё время — не беда:
-     тикер на банке есть с любой стороны, а полный состав напечатан на
-     обхватке и никуда не уезжает.
+     Half-turns with a stop facing forward were tried — so that the icon,
+     which is now printed on one panel, could be studied a little longer.
+     The idea was dropped deliberately: an object that freezes and jerks
+     pulls the eye and argues with the text of the first screen, whereas an
+     even rotation stays background. That the icon is not visible all the
+     time is no loss: the ticker is on the can from every side, and the full
+     holdings are printed on the sleeve and never go away.
 
-     Банки внутри упаковки неподвижны: в настоящей пачке они не крутятся,
-     и любое их доворачивание сразу выдаёт подделку. */
-  const PERIOD = 34;                          // секунд на полный оборот
+     The cans inside the pack do not move: in a real pack they do not spin,
+     and turning them at all gives the fake away at once. */
+  const PERIOD = 34;                          // seconds per full turn
 
   return {
     pack, cans,
@@ -248,12 +252,13 @@ export function buildPack(THREE, geos, seats, { scale = 2 } = {}) {
   };
 }
 
-/* Кадрирование по габариту.
+/* Framing by the bounding box.
 
-   Считается по коробке, а не по сфере: радиус сферы тянется по диагонали
-   через всю глубину упаковки, и камера от него отъезжала почти вдвое
-   дальше нужного. Замер берётся на повороте 45°, где упаковка шире всего:
-   иначе на этом угле она вылезет за край кадра. */
+   Computed from the box, not from a sphere: the sphere's radius stretches
+   along the diagonal through the whole depth of the pack, and the camera
+   backed off almost twice as far as it needed to. The measurement is taken
+   at a 45° rotation, where the pack is widest: otherwise at that angle it
+   runs off the edge of the frame. */
 export function framePack(THREE, pack, cam, { margin = 1.02, lift = .05 } = {}) {
   const keep = pack.rotation.y;
   pack.rotation.y = Math.PI / 4;

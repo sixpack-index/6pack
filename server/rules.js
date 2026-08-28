@@ -14,12 +14,7 @@ const C = globalThis.SixpackCore;
    any key at all in the database, and one day it will create a typo
    instead of an address — silently, and it will turn up only when the site
    shows a dash while the console is filled in. */
-export const WRITABLE = new Set(['token', 'vault', 'theme', 'note', 'buy']);
-
-/* The theme is stored as a string and substituted into data-theme. We
-   limit the alphabet: nothing but the name of a palette must get into the
-   attribute. */
-const THEME_RE = /^[a-z]{2,16}$/;
+export const WRITABLE = new Set(['token', 'vault', 'note', 'buy']);
 
 /* The buy link lives in the settings and not in the code.
 
@@ -65,9 +60,6 @@ export function validateConfig(body) {
        switch: erase the address, the calculation goes dark, the site lives. */
     if ((k === 'token' || k === 'vault') && val !== '' && !C.isAddress(val)) {
       return { ok: false, error: 'the address "' + k + '" must be 0x and forty hex digits, characters given: ' + val.length };
-    }
-    if (k === 'theme' && val !== '' && !THEME_RE.test(val)) {
-      return { ok: false, error: 'the palette name is two to sixteen Latin letters' };
     }
     if (k === 'note' && val.length > 500) {
       return { ok: false, error: 'the note is longer than five hundred characters' };

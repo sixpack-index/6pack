@@ -1,53 +1,55 @@
-/* ЭТИКЕТКА БАНКИ И ОБЁРТКА УПАКОВКИ — рисуются на canvas, идут текстурами.
+/* CAN LABEL AND PACK WRAP — drawn on canvas, used as textures.
 
-   ЗАМЕРЫ РАЗВЁРТКИ (модель «Aluminium can 500ml», меш Material).
-   Взяты из буфера модели, а не подобраны:
-     • V растёт снизу вверх, corr(V, высота) = 0.999 — развёртка честно
-       цилиндрическая, картинка ложится без искажений;
-     • прямая стенка занимает 8..147 мм высоты, что по V даёт 0.472..1.000.
-   Отсюда WALL_V0 = 0.472: текстуру растягиваем ровно на этот отрезок, и
-   тогда рисовать можно во всю площадь холста.
-     • U обходит круг один раз и в нужную сторону — разворачивать не надо.
-       Проверено четырьмя вариантами в один кадр: без разворота надписи
-       читаются, с разворотом зеркалятся.
+   UV UNWRAP MEASUREMENTS (model "Aluminium can 500ml", mesh Material).
+   Taken from the model's buffer, not guessed:
+     • V grows from the bottom up, corr(V, height) = 0.999 — the unwrap is
+       honestly cylindrical, the picture lands without distortion;
+     • the straight wall spans 8..147 mm of height, which in V is 0.472..1.000.
+   Hence WALL_V0 = 0.472: we stretch the texture over exactly that span, and
+   then we can draw across the whole area of the canvas.
+     • U goes around the circle once and in the right direction — no need to
+       flip it. Checked with four variants in a single frame: without the
+       flip the lettering reads, with it the lettering comes out mirrored.
 
-   ПРО ПОВТОР РИСУНКА. С любой точки видно около 40% окружности. Нарисуешь
-   один раз — две трети времени зритель смотрит на пустой бок. Поэтому
-   рисунок обходит банку PANELS раз. Так же сделаны настоящие банки. */
+   ON REPEATING THE ARTWORK. From any one point about 40% of the
+   circumference is visible. Draw it once and two thirds of the time the
+   viewer is looking at a blank side. So the artwork goes around the can
+   PANELS times. Real cans are made the same way. */
 
-const WALL_V0 = 0.472;                 // низ прямой стенки в координатах V
-const PANELS = 3;                      // сколько раз рисунок обходит банку
+const WALL_V0 = 0.472;                 // bottom of the straight wall in V
+const PANELS = 3;                      // how many times the art wraps the can
 
-/* РАЗМЕР ХОЛСТА СЧИТАЕТСЯ ИЗ ГЕОМЕТРИИ, А НЕ БЕРЁТСЯ КРУГЛЫМ.
+/* THE CANVAS SIZE IS COMPUTED FROM THE GEOMETRY, NOT ROUNDED OFF.
 
-   Панель на банке — это 1/3 окружности в ширину и вся прямая стенка в
-   высоту: π × 65.9 / 3 = 69.0 мм на 139 мм, то есть соотношение 0.4965.
+   A panel on the can is 1/3 of the circumference wide and the whole straight
+   wall tall: π × 65.9 / 3 = 69.0 mm by 139 mm, that is, a ratio of 0.4965.
 
-   Первый заход дал 512 × 512 на панель, и это ровно вдвое сплющивало
-   рисунок вбок: по горизонтали выходило 7.4 пикселя на миллиметр, по
-   вертикали 3.7. Квадратная иконка садилась на банку прямоугольником
-   вдвое выше своей ширины, а буквы читались узкими и вытянутыми.
+   The first attempt gave 512 × 512 per panel, and that squashed the artwork
+   sideways by exactly 2x: horizontally it worked out to 7.4 pixels per
+   millimetre, vertically 3.7. A square icon sat on the can as a rectangle
+   twice as tall as it was wide, and the letters read narrow and stretched.
 
-   Держим одинаковую плотность по обеим осям: 512 / 0.4965 ≈ 1031, берём
-   1024 — степень двойки, видеопамяти дружелюбнее, ошибка 0.7%. */
+   We keep the density equal on both axes: 512 / 0.4965 ≈ 1031, we take
+   1024 — a power of two, friendlier to video memory, 0.7% off. */
 const W = 1536, H = 1024;
 
-/* Какая панель лицевая. Иконка печатается только на ней: у настоящей банки
-   лицо одно, а рисовать её на всех трёх — значит показывать две иконки
-   разом на скруглении, что и выглядело странно. Остальные панели несут
-   шапку и тикер, поэтому пустого бока всё равно не бывает. */
+/* Which panel is the front one. The icon is printed only there: a real can
+   has one face, and drawing it on all three means showing two icons at once
+   on the curve, which is exactly what looked odd. The other panels carry the
+   header and the ticker, so there is never a blank side anyway. */
 const FRONT_PANEL = 0;
 
 /* =========================================================================
-   ЦВЕТА БЕРУТСЯ ИЗ ТЕМЫ, А НЕ ВПИСАНЫ
+   COLOURS COME FROM THE THEME, THEY ARE NOT HARDCODED
 
-   Тем на сайте пятнадцать, и акцент у каждой свой. Вписанный сюда жёлтый
-   держался ровно до первой смены темы: на зелёном сайте банки светились
-   чужим цветом, и это выглядело как чужая картинка, вставленная в макет.
+   The site has fifteen themes, and each has its own accent. A yellow written
+   in here survived exactly until the first theme switch: on the green site
+   the cans glowed in a foreign colour, and that looked like someone else's
+   picture pasted into the layout.
 
-   Читаем те же переменные, что и вёрстка. Значения снимаются на каждой
-   отрисовке холста: тему переключают на живой странице, и закешированная
-   палитра пережила бы переключение.
+   We read the same variables the stylesheet does. The values are sampled on
+   every repaint of the canvas: the theme gets switched on a live page, and a
+   cached palette would outlive the switch.
    ========================================================================= */
 function palette() {
   const cs = getComputedStyle(document.documentElement);
@@ -62,39 +64,40 @@ function palette() {
   };
 }
 
-/* Какая доля этикетки остаётся на виду.
+/* How much of the label stays in view.
 
-   Банка стоит в упаковке, и картонная обхватка закрывает ей низ. Считаем,
-   что именно она закрывает: прямая стенка тянется от y = −0.45 до +0.41
-   в системе банки, верх обхватки — на −0.14. Значит снизу съедается
-   (−0.14 + 0.45) / 0.86 = 0.36 высоты этикетки.
+   The can stands in the pack, and the cardboard sleeve covers its bottom.
+   Here is what exactly it covers: the straight wall runs from y = −0.45 to
+   +0.41 in the can's own frame, and the top of the sleeve is at −0.14. So
+   (−0.14 + 0.45) / 0.86 = 0.36 of the label's height is eaten from below.
 
-   Весь рисунок поэтому живёт в верхних 62%. Раньше он занимал всю площадь,
-   и картон резал тикеры ровно пополам — на упаковке от PIPEDOG читалось
-   «PIPEDO». Ниже этой черты остаётся только фон: рисовать туда нечего. */
+   The whole artwork therefore lives in the top 62%. It used to take up the
+   full area, and the cardboard cut the tickers exactly in half — on the
+   PIPEDOG pack it read "PIPEDO". Below that line only the background is
+   left: there is nothing to draw down there. */
 const PANEL_U = 0.62;
 
-/* Толщина крайних полос холста — цвет плеча и донышка. Там у настоящей
-   банки голый металл, рисунок туда не заходит. Тон берём из темы
-   (--color-ink-2): тёмный, но не чёрный — в чёрном горлышко проваливается
-   и банка теряет форму. */
+/* Thickness of the canvas edge bands — the colour of the shoulder and of the
+   base. On a real can that is bare metal, the artwork does not reach there.
+   The tone comes from the theme (--color-ink-2): dark, but not black — in
+   black the neck falls away and the can loses its shape. */
 const SHOULDER_PX = 6;
 
 const DISP = '"Archivo", system-ui, sans-serif';
 const MONO = '"Azeret Mono", ui-monospace, monospace';
 
 /* =========================================================================
-   ИКОНКИ ТОКЕНОВ
+   TOKEN ICONS
 
-   Иконки лежат на cdn.dexscreener.com, и CDN отдаёт их БЕЗ заголовка
-   access-control-allow-origin — проверено запросом. Для <img> это неважно,
-   но холст, куда такую картинку нарисовали, становится испорченным
-   (tainted), и WebGL отказывается брать из него текстуру: страница падает
-   на ровном месте. Поэтому всё идёт через наш /api/icon, который тот же
-   байт-в-байт файл отдаёт со своим CORS.
+   The icons live on cdn.dexscreener.com, and the CDN serves them WITHOUT an
+   access-control-allow-origin header — verified by request. For an <img>
+   that does not matter, but a canvas such a picture has been drawn into
+   becomes tainted, and WebGL refuses to take a texture from it: the page
+   dies for no visible reason. So everything goes through our /api/icon,
+   which serves the same byte-for-byte file with its own CORS.
 
-   Промах не должен ронять первый экран: не загрузилась иконка — рисуем
-   заглушку с первой буквой тикера и живём дальше.
+   A miss must not bring down the first screen: if an icon did not load we
+   draw a placeholder with the first letter of the ticker and carry on.
    ========================================================================= */
 export function loadIcon(url, apiBase = '') {
   return new Promise(resolve => {
@@ -107,7 +110,7 @@ export function loadIcon(url, apiBase = '') {
   });
 }
 
-/* Межбуквенное расстояние canvas не умеет — вручную. */
+/* Canvas cannot do letter spacing — so do it by hand. */
 function tracked(g, text, x, y, spacing, align = 'center') {
   const w = [...text].reduce((s, ch) => s + g.measureText(ch).width + spacing, -spacing);
   let cx = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
@@ -125,9 +128,9 @@ function roundRect(g, x, y, w, h, r) {
   g.closePath();
 }
 
-/* Иконка квадратом со скруглением — как на карточках корзины на странице.
-   Одна форма во всех местах сайта: круг здесь и квадрат там читались бы
-   разными сущностями. */
+/* The icon as a rounded square — as on the basket cards on the page. One
+   shape everywhere on the site: a circle here and a square there would read
+   as two different things. */
 function drawIcon(g, img, x, y, size, ticker, P) {
   const r = size * .22;
   g.save();
@@ -136,7 +139,7 @@ function drawIcon(g, img, x, y, size, ticker, P) {
   if (img) {
     g.drawImage(img, x, y, size, size);
   } else {
-    // Заглушка: буква тикера. Пустой квадрат читался бы дырой в этикетке.
+    // Placeholder: ticker letter. An empty square would be a hole in the label.
     g.fillStyle = P.BLOCK; g.fillRect(x, y, size, size);
     g.fillStyle = P.NEON; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.font = `800 ${size * .52}px ${DISP}`;
@@ -144,44 +147,44 @@ function drawIcon(g, img, x, y, size, ticker, P) {
     g.textBaseline = 'alphabetic';
   }
   g.restore();
-  // Кант: без него тёмная иконка сливается с тёмной банкой.
+  // Edging: without it a dark icon merges into the dark can.
   g.strokeStyle = 'rgba(255,255,255,.22)';
   g.lineWidth = Math.max(1, size * .018);
   roundRect(g, x, y, size, size, r);
   g.stroke();
 }
 
-/* Одна панель этикетки. Координаты в долях, чтобы можно было поднять
-   разрешение холста под ретину, ничего не переписывая. */
+/* One panel of the label. Coordinates in fractions, so that the canvas
+   resolution can be raised for retina without rewriting anything. */
 function panel(g, x, w, hFull, seat, P, isFront) {
   const cx = x + w / 2;
   const m = w * .085;
-  const h = hFull * PANEL_U;              // рисуем только в видимой части
+  const h = hFull * PANEL_U;              // draw only in the visible part
 
   g.strokeStyle = 'rgba(255,255,255,.13)';
   g.lineWidth = Math.max(1, w * .004);
-  // Рамка уходит вниз за обхватку: обрезанная картоном, она читается как
-  // продолжение печати под упаковкой, а замкнутая снизу — как наклейка.
+  // The frame runs down behind the sleeve: cut by cardboard it reads as print
+  // continuing under the pack, whereas closed at the bottom it is a sticker.
   g.strokeRect(x + m, h * .10, w - m * 2, hFull);
 
-  // --- шапка: имя индекса и номер места ---
+  // --- header: index name and seat number ---
   g.fillStyle = P.DIM; g.font = `500 ${w * .038}px ${MONO}`;
   g.textAlign = 'left';
   tracked(g, '6PACK INDEX', x + m + w * .030, h * .215, w * .011, 'left');
   g.textAlign = 'right'; g.fillStyle = P.NEON;
   tracked(g, String(seat.n).padStart(2, '0'), x + w - m - w * .030, h * .215, w * .011, 'right');
 
-  // --- иконка токена: только на лицевой панели ---
+  // --- token icon: on the front panel only ---
   const isz = w * .40;
   if (isFront) drawIcon(g, seat.iconImg, cx - isz / 2, h * .265, isz, seat.ticker, P);
 
-  // --- тикер ---
+  // --- ticker ---
   g.textAlign = 'center'; g.fillStyle = P.BONE;
   let px = w * .150;
   g.font = `800 ${px}px ${DISP}`;
   const t = seat.ticker.toUpperCase();
-  /* Длинные тикеры вроде STONKBROKER не влезают. Ужимаем шрифт, а НЕ режем
-     текст: обрезанный тикер — это уже другой токен. */
+  /* Long tickers like STONKBROKER do not fit. We shrink the font, we do NOT
+     cut the text: a truncated ticker is already a different token. */
   while (g.measureText(t).width > w - m * 2.4 && px > w * .05) {
     px *= .93; g.font = `800 ${px}px ${DISP}`;
   }
@@ -191,19 +194,19 @@ function panel(g, x, w, hFull, seat, P, isFront) {
   g.fillStyle = P.NEON;
   g.fillRect(cx - tw / 2, h * .885, tw, Math.max(2, hFull * .008));
 
-  /* Доли и состав отсюда убраны: они попадали ровно под картон. Их место —
-     на лице обхватки, где они и напечатаны. */
+  /* Weights and holdings are gone from here: they fell exactly under the
+     cardboard. Their place is the sleeve face, where they are printed. */
 }
 
-/** Холст этикетки. seat: { n, ticker, iconImg } */
+/** The label canvas. seat: { n, ticker, iconImg } */
 export function labelCanvas(seat, scale = 1) {
   const c = document.createElement('canvas');
   c.width = W * scale; c.height = H * scale;
   const g = c.getContext('2d');
   g.scale(scale, scale);
 
-  /* Фон не плоский: вертикальный градиент даёт банке объём даже там, куда
-     не достаёт свет сцены. С плоской заливкой бок читается наклейкой. */
+  /* The background is not flat: a vertical gradient gives the can volume even
+     where the scene light does not reach. A flat fill reads as a sticker. */
   const P = palette();
   const bg = g.createLinearGradient(0, 0, 0, H);
   bg.addColorStop(0, P.BLOCK); bg.addColorStop(.55, P.INK); bg.addColorStop(1, '#050505');
@@ -215,10 +218,10 @@ export function labelCanvas(seat, scale = 1) {
   g.fillStyle = 'rgba(255,255,255,.06)';
   for (let i = 0; i < PANELS; i++) g.fillRect(i * pw, H * .075, 1, H * .85);
 
-  /* Крайние полосы — цвет плеча и донышка. Работают в паре с зажимом края
-     в labelTexture: всё выше прямой стенки берёт цвет верхней строки, всё
-     ниже — нижней. Без этого текстура заворачивалась и на горлышке
-     проступали светлые ленты. */
+  /* The edge bands — the colour of the shoulder and of the base. They work
+     with the edge clamp in labelTexture: everything above the straight wall
+     takes the top row's colour, everything below the bottom row's. Without
+     this the texture wrapped around and light bands showed on the neck. */
   g.fillStyle = P.INK2;
   g.fillRect(0, 0, W, SHOULDER_PX);
   g.fillRect(0, H - SHOULDER_PX, W, SHOULDER_PX);
@@ -230,29 +233,29 @@ export function labelTexture(THREE, seat, scale = 1) {
   const t = new THREE.CanvasTexture(labelCanvas(seat, scale));
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8;
-  t.wrapS = THREE.RepeatWrapping;          // по кругу — повтор, шов сходится
-  t.wrapT = THREE.ClampToEdgeWrapping;     // по высоте — зажим, см. выше
+  t.wrapS = THREE.RepeatWrapping;          // around: repeat, the seam meets
+  t.wrapT = THREE.ClampToEdgeWrapping;     // vertically: clamp, see above
   t.repeat.y = 1 / (1 - WALL_V0);
   t.offset.y = -WALL_V0 / (1 - WALL_V0);
   return t;
 }
 
 /* =========================================================================
-   ОБЁРТКА УПАКОВКИ
+   PACK WRAP
 
-   Настоящий сикспак держится картонной обхваткой по низу банок. Её лицо —
-   готовое место под карточку индекса, и это единственная плоская
-   поверхность во всей сцене: на цилиндре крупный текст всегда изогнут, а
-   заголовок должен читаться прямо.
+   A real six-pack is held together by a cardboard sleeve around the bottom
+   of the cans. Its face is a ready-made spot for the index card, and it is
+   the only flat surface in the whole scene: on a cylinder large text is
+   always curved, and the heading has to read straight.
 
-   Лицо и спина печатаются одинаково — как на настоящей упаковке. Иначе
-   половину оборота зритель смотрит на пустой картон.
+   Face and back are printed the same — as on a real pack. Otherwise for
+   half of every turn the viewer is looking at blank cardboard.
    ========================================================================= */
 
-/** Лицевая сторона обхватки: карточка индекса. */
+/** The face of the sleeve: the index card. */
 export function sleeveFace(seats, { aspect = 3.6, h = 460, scale = 1 } = {}) {
-  /* Ширина холста считается из соотношения самой грани, а не задаётся
-     числом: иначе текстуру растягивает и печать «плывёт» по ширине. */
+  /* The canvas width is computed from the face's own ratio, not given as a
+     number: otherwise the texture stretches and the print drifts sideways. */
   const w = Math.round(h * aspect);
   const c = document.createElement('canvas');
   c.width = w * scale; c.height = h * scale;
@@ -263,13 +266,13 @@ export function sleeveFace(seats, { aspect = 3.6, h = 460, scale = 1 } = {}) {
   bg.addColorStop(0, P.BLOCK); bg.addColorStop(1, P.INK);
   g.fillStyle = bg; g.fillRect(0, 0, w, h);
 
-  // Кант по краю — картон имеет толщину, и грань должна её показывать.
+  // Border edging — cardboard has thickness, and the face must show it.
   g.strokeStyle = 'rgba(255,255,255,.10)'; g.lineWidth = 3;
   g.strokeRect(22, 22, w - 44, h - 44);
 
-  /* Грань длинная и низкая, поэтому вёрстка в две колонки: слева имя,
-     справа состав. В одну колонку заголовок и шесть иконок не помещались
-     без того, чтобы всё стало мелким. */
+  /* The face is long and low, so the layout is two columns: the name on the
+     left, the holdings on the right. In one column the heading and six icons
+     would not fit without everything becoming tiny. */
   const pad = h * .13;
   g.textAlign = 'left';
 
@@ -285,12 +288,12 @@ export function sleeveFace(seats, { aspect = 3.6, h = 460, scale = 1 } = {}) {
   g.fillStyle = P.DIM; g.font = `500 ${h * .072}px ${MONO}`;
   tracked(g, 'HOLD 1. OWN 6.', pad, h * .805, h * .015, 'left');
 
-  /* Состав — шесть иконок с тикерами. Ровно то, что человек хочет узнать
-     про индекс с одного взгляда, и ровно то, что печатают на упаковке. */
-  /* Ширина ряда иконок считается от МЕСТА, которое осталось, а не задаётся
-     наперёд: при первом заходе ряд начинался фиксированно и наезжал на
-     слово 6PACK. Левая колонка уже отрисована, её правый край известен —
-     от него и пляшем. */
+  /* The holdings — six icons with tickers. Exactly what a person wants to
+     know about the index at a glance, and exactly what a pack prints. */
+  /* The width of the icon row is computed from the ROOM that is left, not
+     fixed up front: on the first attempt the row started at a fixed spot and
+     ran into the word 6PACK. The left column is already drawn, its right
+     edge is known — that is what we work from. */
   const leftEdge = pad + Math.max(bw, g.measureText('HOLD 1. OWN 6.').width) + h * .22;
   const room = w - pad - leftEdge;
   const n = seats.length;
@@ -315,7 +318,7 @@ export function sleeveFace(seats, { aspect = 3.6, h = 460, scale = 1 } = {}) {
   return c;
 }
 
-/** Торец обхватки — узкая полоса, на ней помещается только имя. */
+/** The sleeve's end — a narrow strip, only the name fits on it. */
 export function sleeveSide({ aspect = 2.4, h = 460, scale = 1 } = {}) {
   const w = Math.round(h * aspect);
   const c = document.createElement('canvas');

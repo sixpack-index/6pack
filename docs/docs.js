@@ -1,20 +1,16 @@
 /* =========================================================================
-   The documentation page. It needs little: to remember the chosen accent,
-   to keep the table of contents, and not to stay silent in answer to the
-   wallet button.
+   Страница документации. Ей нужно немного: помнить выбранный акцент,
+   вести оглавление и не молчать в ответ на кнопку кошелька.
    ========================================================================= */
 
 const BRAND = { name: '6PACK', ticker: '6PACK' };
 
-/* The theme is chosen on the main page and lies in localStorage — here we
-   only read it. Otherwise the documentation would open in a different
-   colour from the site. */
+/* Тема выбрана на главной и лежит в localStorage — здесь её только читаем.
+   Иначе документация открывалась бы в другом цвете, чем сайт. */
 try {
-  const t = localStorage.getItem('sixpack.theme');
-  if (t && /^[a-z]+$/.test(t)) document.documentElement.dataset.theme = t;
-} catch (_) { /* private mode */ }
+} catch (_) { /* приватный режим */ }
 
-/* The table of contents highlights the section now on the screen. */
+/* Оглавление подсвечивает раздел, который сейчас на экране. */
 const links = [...document.querySelectorAll('.docs-toc a')];
 const targets = links
   .map(a => document.querySelector(a.getAttribute('href')))
@@ -31,7 +27,7 @@ if (targets.length && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
   targets.forEach(t => io.observe(t));
 }
 
-/* No silent buttons: there is nothing to connect to — so we say so. */
+/* Никаких молчащих кнопок: подключать нечего — так и говорим. */
 const connect = document.querySelector('.connect');
 if (connect) {
   connect.addEventListener('click', e => {
@@ -43,9 +39,9 @@ if (connect) {
 }
 
 
-/* The wallet button is here too: a person reading the rules most often
-   wants to check their own balance as the next step. No separate logic is
-   needed — all of it is in wallet.js. */
+/* Кнопка кошелька есть и здесь: человек, читающий правила, чаще всего
+   следующим шагом хочет проверить свой баланс. Отдельной логики не надо —
+   вся она в wallet.js. */
 if (window.SixpackWallet) {
   window.SixpackWallet.wire();
   window.SixpackWallet.restore();

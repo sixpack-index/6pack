@@ -1,99 +1,68 @@
 /* =========================================================================
-   6PACK. Layout and typography copy the original; the behavior is written
-   from scratch: the shape spins in a real renderer, the numbers are read
-   from the chain.
+   6PACK. Вёрстка и типографика повторяют оригинал, поведение написано
+   заново: фигура крутится настоящим рендером, числа читаются из цепи.
 
-   The split that matters here:
-     READ FROM THE CHAIN — the basket, prices, 24h change, liquidity,
-       volumes. This is the truth.
-     COMPUTED FROM THE MODEL — how much the vault would collect and how
-       much a holder would get. Arithmetic on live numbers and one
-       assumption, stated out loud.
-     DOES NOT EXIST — the $6PACK price, holders, payout history. None of
-       that is on the page: the site must not promise more than the code
-       can do.
+   Разделение, которое здесь главное:
+     ЧИТАЕТСЯ ИЗ ЦЕПИ — корзина, цены, изменение за сутки, ликвидность,
+       объёмы. Это правда.
+     СЧИТАЕТСЯ ПО МОДЕЛИ — сколько собрала бы казна и сколько досталось бы
+       холдеру. Арифметика на живых числах и одном допущении, названном вслух.
+     НЕ СУЩЕСТВУЕТ — цена $6PACK, холдеры, история выплат. Этого на странице
+       нет: сайт не должен обещать больше, чем умеет код.
    ========================================================================= */
 
 const BRAND = {
-  name: '6PACK',         // project name, changed only here
+  name: '6PACK',         // имя проекта, меняется только здесь
   ticker: '6PACK',
 };
 
-/* The wallet lives in a separate file and cannot reach BRAND — so we put
-   the ticker on window ourselves. wallet.js used to read
-   `window.DimehoodBrand`, which nobody ever set, and silently showed the
-   fallback name written into it: a second copy of the same thing, one that
-   would have diverged on the first rename. */
+/* Кошелёк живёт отдельным файлом и до BRAND не дотягивается — кладём тикер
+   в window сами. Раньше wallet.js читал `window.DimehoodBrand`, которого
+   никто не выставлял, и молча показывал вписанное в него запасное имя:
+   второй список того же самого, разошедшийся бы на первом переименовании. */
 window.SixpackBrand = BRAND.ticker;
 
-/* Where this file lives.
+/* Где лежит этот файл.
 
-   Needed for exactly one thing: loading stage.js on demand. A dynamic
-   `import()` inside an ordinary (non-module) script resolves the path
-   **relative to the page URL**, not to the script URL. While there is one
-   page and it sits at the root there is no difference; on a page in a
-   subfolder `./stage.js` turns into `/subfolder/stage.js`, which is not
-   there, and the shape silently fails to start — what stays instead is the
-   static drawing from the markup, and that looks like it is working.
+   Нужно ровно для одного: догрузить stage.js. Динамический `import()` в
+   обычном (не модульном) скрипте считает путь **от адреса страницы**, а не
+   от адреса скрипта. Пока страница одна и лежит в корне, разницы нет; на
+   странице в подпапке `./stage.js` превращается в `/подпапка/stage.js`,
+   которого там нет, и фигура молча не заводится — вместо неё остаётся
+   статический рисунок из разметки, а он выглядит как работающий.
 
-   That is exactly what happened on the draft variants: the sphere was in
-   place and not spinning, and it was invisible in a screenshot. So resolve
-   from the script itself. */
+   Ровно так и случилось на черновиках вариантов: сфера была на месте и не
+   вращалась, и это было незаметно на скриншоте. Считаем от самого скрипта. */
 const HERE = (document.currentScript && document.currentScript.src) || location.href;
 
-/* The mechanics rules live in core.js — one set of numbers for the whole
-   project: the calculator here computes from them, so does the epoch size
-   on the server, and /docs describes those same ones in words. A copy here
-   would mean two lists of the same thing; they diverge on the first patch,
-   and silently. */
+/* Правила механики живут в core.js — одним набором чисел на весь проект:
+   по ним считает калькулятор здесь, размер эпохи на сервере, и их же
+   описывает словами /docs. Копия здесь означала бы два списка одного и
+   того же; они разъезжаются на первом патче, и молча. */
 const MODEL = globalThis.SixpackCore.MODEL;
 
-/* Seat weights in basis points: [1667, 1667, 1667, 1667, 1666, 1666].
-   Computed by the core, not copied in here as numbers. */
+/* Веса мест в базисных пунктах: [1667, 1667, 1667, 1667, 1666, 1666].
+   Считаются ядром, а не переписываются сюда числами. */
 const WEIGHTS = globalThis.SixpackCore.weightsBps();
 
-/* The project accent is SIGNAL. It is also first in the list: both
-   applyTheme and the reset take THEMES[0] as the default, so the order
-   here is not cosmetic. */
-const THEMES = [
-  { id: 'signal',  label: 'SIGNAL',  c: '#00e05a', bg: '#06100a' },
-  /* The first six sit next to Robinhood Chain's signature acid: its exact
-     lime is already used by another project on this chain, so we take
-     neighbours of it rather than a copy. */
-  { id: 'lime',    label: 'LIME',    c: '#b8ff2b', bg: '#0c0f07' },
-  { id: 'acid',    label: 'ACID',    c: '#9ef01a', bg: '#0a0e08' },
-  { id: 'spring',  label: 'SPRING',  c: '#55e630', bg: '#070f08' },
-  { id: 'mint',    label: 'MINT',    c: '#4fe0a0', bg: '#07100c' },
-  { id: 'teal',    label: 'TEAL',    c: '#2fe0c8', bg: '#06100f' },
-  /* Everything else follows. */
-  { id: 'ice',     label: 'ICE',     c: '#66e8ff', bg: '#080d11' },
-  { id: 'azure',   label: 'AZURE',   c: '#4d9dff', bg: '#070b12' },
-  { id: 'violet',  label: 'VIOLET',  c: '#b98bff', bg: '#0b0912' },
-  { id: 'magenta', label: 'MAGENTA', c: '#ff5cc8', bg: '#100913' },
-  { id: 'rose',    label: 'ROSE',    c: '#ff4d6d', bg: '#110809' },
-  { id: 'ember',   label: 'EMBER',   c: '#ff5b3d', bg: '#110a08' },
-  { id: 'amber',   label: 'AMBER',   c: '#ffb02e', bg: '#100e0a' },
-  { id: 'gold',    label: 'GOLD',    c: '#e8c547', bg: '#0f0e09' },
-  { id: 'bone',    label: 'BONE',    c: '#e8e6e1', bg: '#0d0d0c' },
-];
 
 
 let BASKET = [];
 let DISP = null;
-let SELF = null;   // our token: fills in as soon as there is an address
+let SELF = null;   // наш токен: заполнится, как только будет адрес
 let META = { source: null, scanned: 0, priced: 0, at: 0, failed: null, via: null, age: null };
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
 /* =========================================================================
-   Formatting
+   Форматирование
    ========================================================================= */
 
 const nf = (v, d = 0) =>
   Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 
-/** Money. Nobody should read 249999.99999999997 — on MAOMAO they did. */
+/** Деньги. Никто не должен читать 249999.99999999997 — на MAOMAO читали. */
 function money(v) {
   const a = Math.abs(v);
   if (a >= 1e9) return '$' + nf(v / 1e9, 2) + 'B';
@@ -104,7 +73,7 @@ function money(v) {
   return '$0';
 }
 
-/** Price: small values use a zero counter, as on exchanges and in the original. */
+/** Цена: мелочь пишем счётчиком нулей, как на биржах и как в оригинале. */
 function price(v) {
   if (!Number.isFinite(v)) return '—';
   if (v >= 1) return '$' + nf(v, 2);
@@ -123,7 +92,7 @@ function units(v) {
   if (v >= 1e6) return nf(v / 1e6, 2) + 'M';
   if (v >= 1e3) return nf(v / 1e3, 1) + 'K';
   if (v >= 1)   return nf(v, 2);
-  // Trailing zeros on fractions lie about precision: 0.29 is 0.29, not 0.2900.
+  // Хвостовые нули у дробей врут о точности: 0.29 — это 0.29, а не 0.2900.
   return String(Number(v.toPrecision(3)));
 }
 
@@ -138,12 +107,12 @@ function ago(ts) {
 }
 
 /* =========================================================================
-   Derived values
+   Производные
    ========================================================================= */
 const totalLiq = () => BASKET.reduce((s, t) => s + t.liq, 0);
 const totalVol = () => BASKET.reduce((s, t) => s + t.vol24, 0);
 
-/** A constituent's weight is its share of the basket's liquidity. */
+/** Вес участника — его доля ликвидности корзины. */
 function weights() {
   const L = totalLiq();
   return L > 0 ? BASKET.map(t => t.liq / L) : BASKET.map(() => 1 / (BASKET.length || 1));
@@ -153,35 +122,31 @@ const NA = '—';
 
 
 /* =========================================================================
-   The shape in the stage. The renderer itself lives in stage.js and loads
-   separately — together with three.js that is 670 KB, and there is no
-   reason to pull it into the first screen.
+   Фигура в стакане. Сам рендер живёт в stage.js и грузится отдельно —
+   вместе с three.js это 670 КБ, и тянуть их в первый экран незачем.
 
-   The startup order is taken from the original: wait until the stage shows
-   up on screen, then for the visitor's first movement — or eight seconds
-   of silence.
+   Порядок запуска взят у оригинала: ждём, пока стакан покажется на
+   экране, затем первое движение посетителя — или восемь секунд тишины.
    ========================================================================= */
 let stopStage = null;
 
-/* API base for the stage: it pulls token icons through our proxy. Empty
-   means the same domain — /api/* is rewritten to Railway via vercel.json.
-   An absolute address is only needed when opening from file://, where
-   there is no domain. */
+/* База API для стакана: иконки токенов он тянет через нашу пересылку.
+   Пусто — тот же домен, /api/* переписывается на Railway через vercel.json.
+   Абсолютный адрес нужен только при открытии с file://, где домена нет. */
 const API_BASE = (location.protocol === 'file:')
   ? 'https://api-production-2cac.up.railway.app'
   : '';
 
-/* The basket contents for the pack.
+/* Состав корзины для упаковки.
 
-   The stage wakes on the visitor's first movement, and the basket arrives
-   in its own time — the order of those two events is undefined. Hence a
-   promise here rather than a value: if the basket is already there it is
-   ready at once, and if it is not, the stage waits for it instead of
-   assembling six nameless cans. */
+   Стакан просыпается по первому движению посетителя, а корзина приходит
+   своим чередом — и порядок этих двух событий не определён. Поэтому здесь
+   промис, а не значение: если корзина уже есть, он готов сразу, если ещё
+   нет — стакан подождёт её и не соберёт шесть безымянных банок. */
 function basketReady() {
   if (BASKET && BASKET.length) return Promise.resolve(BASKET);
   return new Promise(resolve => {
-    let left = 40;                       // 40 × 250 ms = ten seconds
+    let left = 40;                       // 40 × 250 мс = десять секунд
     const tick = setInterval(() => {
       if (BASKET && BASKET.length) { clearInterval(tick); resolve(BASKET); }
       else if (--left <= 0) { clearInterval(tick); resolve(null); }
@@ -208,8 +173,8 @@ function wireStage() {
     import(new URL('stage.js?v=6', HERE).href)
       .then(m => { stopStage = m.start(stage, pre, fps, basketReady(), API_BASE); })
       .catch(e => {
-        console.error('the shape did not load:', e);
-        // A silent stage is not acceptable: let it say what happened.
+        console.error('фигура не загрузилась:', e);
+        // Молчащего стакана быть не должно: пусть скажет, что случилось.
         fps.textContent = 'no render';
       });
   }
@@ -224,7 +189,7 @@ function wireStage() {
 }
 
 /* =========================================================================
-   Tape
+   Лента
    ========================================================================= */
 function paintTape() {
   if (!BASKET.length) return;
@@ -233,37 +198,36 @@ function paintTape() {
     '<span class="p">' + price(t.price) + '</span>' +
     '<span class="' + (t.chg24 >= 0 ? 'up' : 'dn') + '">' + pct(t.chg24) + '</span></span>'
   ).join('');
-  /* The tape only scrolls forever if one of its halves is wider than the
-     screen.
+  /* Лента едет бесконечно только если одна её половина шире экрана.
 
-     The trick: two identical halves, the tape travels exactly 50% and
-     comes back — the seam is invisible because a copy sits in its place.
-     But that works only while a half covers the whole screen. When the
-     seats went from ten to six, a half shrank by almost half, and on a
-     wide monitor emptiness opened up behind its tail: the tape literally
-     "ran out" and kept scrolling empty.
+     Приём такой: две одинаковые половины, лента уезжает ровно на 50% и
+     возвращается — шва не видно, потому что на его месте оказывается
+     копия. Но это работает, пока половина закрывает экран целиком. Когда
+     мест стало шесть вместо десяти, половина сузилась почти вдвое, и на
+     широком мониторе за её хвостом открывалась пустота: лента буквально
+     «заканчивалась» и ехала дальше пустой.
 
-     So the list is repeated as many times as it takes for a half to
-     outgrow the screen. Not eyeballed: measure the width and pad until it
-     is enough, with a ceiling in case the measurement returns zero (a
-     hidden tab reports zero sizes, and the loop would never end). */
+     Поэтому список повторяется столько раз, сколько нужно, чтобы половина
+     переросла экран. Считаем не на глаз: меряем ширину и дополняем, пока
+     не хватит, с потолком на случай, если измерение вернёт ноль (скрытая
+     вкладка отдаёт нулевые размеры, и цикл был бы вечным). */
   $$('.tape-half').forEach(h => { h.innerHTML = html; });
   padTape();
 }
 
 /**
- * Pad the tape until it is endless.
+ * Дополнить ленту до бесконечной.
  *
- * The two-halves trick works only while one half is wider than the
- * screen: the tape travels exactly 50% and comes back, and a copy sits in
- * the place of the seam. When the seats went from ten to six, a half
- * shrank by almost half, and on a wide monitor emptiness opened up behind
- * its tail — the tape literally ran out and kept scrolling empty.
+ * Приём с двумя половинами работает, только пока одна половина шире
+ * экрана: лента уезжает ровно на 50% и возвращается, а на месте шва
+ * оказывается копия. Когда мест стало шесть вместо десяти, половина
+ * сузилась почти вдвое, и на широком мониторе за её хвостом открывалась
+ * пустота — лента буквально заканчивалась и ехала дальше пустой.
  *
- * Called twice: right at load, from the markup, and again once the data
- * arrives. The first call matters no less than the second: if the chain is
- * slow to answer or never answers, the person is looking at a short tape
- * that whole time, and "no data yet" looks like "the site is broken".
+ * Вызывается дважды: сразу на загрузке, по разметке, и ещё раз после
+ * прихода данных. Первый вызов важен не меньше второго: если цепь
+ * отвечает медленно или не отвечит вовсе, человек всё это время смотрит
+ * на короткую ленту, и «данных ещё нет» выглядит как «сайт сломан».
  */
 function padTape() {
   const halves = $$('.tape-half');
@@ -272,9 +236,8 @@ function padTape() {
   const seed = halves.map(h => h.innerHTML);
   if (!seed[0]) return;
 
-  /* The ceiling is mandatory: in a hidden tab and before the fonts load
-     the browser reports zero sizes, and a measurement loop would never
-     have stopped. */
+  /* Потолок обязателен: на скрытой вкладке и до загрузки шрифтов браузер
+     отдаёт нулевые размеры, и цикл по замеру не остановился бы. */
   const need = Math.max(window.innerWidth, 1) * 1.2;
   for (let k = 0; k < 8 && first.scrollWidth > 0 && first.scrollWidth < need; k++) {
     halves.forEach((h, i) => { h.innerHTML += seed[i]; });
@@ -282,11 +245,10 @@ function padTape() {
 }
 
 /* =========================================================================
-   Section 1 — the summary. Eight cards; the headings and captions are his,
-   word for word. All of them are about our token: market cap, the
-   liquidity of its pool, its volume, holders, payouts. There is no token,
-   so a dash everywhere except the clock. He does exactly this with holders
-   himself: "— / not indexed yet".
+   Раздел 1 — сводка. Восемь карточек, заголовки и подписи — его, слово в
+   слово. Все они про наш токен: капитализация, ликвидность его пула,
+   его оборот, холдеры, выплаты. Токена нет — значит прочерк везде, кроме
+   часов. У него самого так сделано с холдерами: «— / not indexed yet».
    ========================================================================= */
 function paintSummary() {
   const k = $$('.kpi');
@@ -297,7 +259,7 @@ function paintSummary() {
     $('.k', el).textContent = key;
     const v = $('.v', el);
     v.textContent = val;
-    v.removeAttribute('data-cu');       // we do not need the original's counter
+    v.removeAttribute('data-cu');       // счётчик оригинала нам не нужен
     $('.s', el).innerHTML = sub;
   };
 
@@ -325,22 +287,22 @@ function paintSummary() {
   set(k[5], 'last epoch paid', NA, '<b>—</b> per constituent, equal weight');
   set(k[6], 'eligible supply', NA, '<b>—</b> qualified at snapshot');
 
-  // The clock really runs; tick() drives it. The caption is his.
+  // Часы идут по-настоящему, их ведёт tick(). Подпись его.
   $('.k', k[7]).textContent = 'next distribution';
   $('.s', k[7]).innerHTML =
     'checked every <b>three hours</b> · closes once the pot covers settlement';
 
-  // 24h dispersion belongs to the basket — computed here, shown there.
+  // Разброс за сутки живёт в корзине — считаем здесь, показываем там.
   const best = BASKET.length ? BASKET.reduce((a, b) => (b.chg24 > a.chg24 ? b : a)) : null;
   const worst = BASKET.length ? BASKET.reduce((a, b) => (b.chg24 < a.chg24 ? b : a)) : null;
   DISP = best ? { pts: nf(best.chg24 - worst.chg24, 0), best, worst } : null;
 }
 
 /* =========================================================================
-   Section 2 — the basket. On his left: how much was handed out over nine
-   epochs; we have no epochs, so a dash. On the right, two metrics about
-   the basket pools themselves: 24h volume and dispersion. Those are read
-   from the chain both for him and for us — so we show them live.
+   Раздел 2 — корзина. Слева у него — сколько роздано за девять эпох;
+   у нас эпох нет, поэтому прочерк. Справа две метрики про сами пулы
+   корзины: суточный оборот и разброс. Эти читаются из цепи и у него, и
+   у нас — их и показываем живьём.
    ========================================================================= */
 function paintBasket() {
   const big = $('.big-g');
@@ -366,7 +328,7 @@ function paintBasket() {
     if (fns[i]) fns[i].innerHTML = r[2];
   });
 
-  // The "last epoch" and "all epochs" bars: there were no epochs, so empty.
+  // Полоски «last epoch» и «all epochs»: эпох не было — пустые.
   $$('.bvm .lb').forEach((lb, i) => {
     lb.innerHTML = '<span>' + (i ? 'all epochs' : 'last epoch') + '</span><b>' + NA + '</b>';
     const trk = lb.parentElement.querySelector('.trk i');
@@ -375,13 +337,13 @@ function paintBasket() {
 }
 
 /* =========================================================================
-   Section 3 — the calculator
+   Раздел 3 — калькулятор
    ========================================================================= */
 const MIN_HOLD = 100_000, MAX_HOLD = 500_000_000;
 
-/* Rounding to a "round" number: one significant digit, step 1 / 2.5 / 5.
-   Someone dragging the slider expects 10,000,000, not 9,970,000 — and an
-   unround number reads as a bug, not as precision. */
+/* Округление до «круглого»: одна значащая цифра, шаг 1 / 2.5 / 5.
+   Человек, тянущий ползунок, ждёт 10 000 000, а не 9 970 000 — и
+   некруглое число он читает как ошибку, а не как точность. */
 function roundNice(v) {
   if (!Number.isFinite(v) || v <= 0) return MIN_HOLD;
   const mag = 10 ** Math.floor(Math.log10(v));
@@ -401,17 +363,16 @@ const a2s = a => {
   return Math.round(((Math.log10(c) - lo) / (hi - lo)) * 1000);
 };
 
-/* How many coins are in the calculator right now.
+/* Сколько монет сейчас в калькуляторе.
 
-   Kept separately from the slider position, and that is not a redundant
-   variable. The slider is discrete: a thousand steps on a logarithmic
-   scale. Clicking "1M" set the position, and what got shown was whatever
-   was computed back out of that position — 997,000 instead of a million.
-   The exact value now lives here, and the slider stays what it always was:
-   a way to change it. */
+   Держим отдельно от положения ползунка, и это не лишняя переменная.
+   Ползунок дискретный: тысяча шагов на логарифмической шкале. Нажатие на
+   «1M» ставило положение, а показывалось то, что из этого положения
+   вычиталось обратно, — 997 000 вместо миллиона. Точное значение теперь
+   живёт здесь, а ползунок остаётся тем, чем и был: способом его менять. */
 let HOLD = 19_650_000;
 
-/** Set the amount from outside: a chip, a wallet balance, anything. */
+/** Задать количество извне: чип, баланс кошелька, что угодно. */
 function setHold(amount, { moveSlider = true } = {}) {
   HOLD = Math.min(Math.max(Number(amount) || 0, 0), MAX_HOLD);
   const input = $('.calc input[type="range"]');
@@ -423,15 +384,13 @@ function paintCalc() {
   const input = $('.calc input[type="range"]');
   if (!input) return;
   const amount = HOLD;
-  /* The core computes it — the same thing the server computes, and the
-     thing the tests check. All that is left here is to display it. While
-     the formula lived in this function, swapping a multiplier inside it
-     slipped past every check. */
+  /* Считает ядро — то же, что считает сервер, и то, что проверяется
+     тестами. Здесь остаётся только показать. Пока формула жила в этой
+     функции, подмена множителя в ней проходила мимо всех проверок. */
   const D = globalThis.SixpackCore.dividendFor(amount, SELF && SELF.vol24, SELF && SELF.price);
 
-  /* Leave the input field alone while someone is typing in it: rewriting
-     the text moves the caret to the end, and typing a number longer than
-     two digits becomes impossible. */
+  /* Поле ввода не трогаем, пока в нём печатают: перезапись текста уводит
+     каретку в конец, и набрать число длиннее двух цифр становится нельзя. */
   const field = $('.calc-amount');
   if (field && document.activeElement !== field) field.value = nf(amount);
   const unit = $('.calc-unit');
@@ -443,9 +402,9 @@ function paintCalc() {
   put('.cs-value', D.value ? money(D.value) : NA);
   put('.cs-share', nf(D.share * 100, 3) + '%');
 
-  /* Three horizons instead of one. Per epoch is what actually gets paid;
-     per day and per thirty days are what a person is really asking about
-     when looking at a three-hour payout. The core computes all three. */
+  /* Три горизонта вместо одного. За эпоху — то, что платят; в сутки и за
+     тридцать дней — то, о чём человек на самом деле спрашивает, когда
+     смотрит на трёхчасовую выплату. Все три считает ядро. */
   put('.calc-big', D.mine === null ? NA : money(D.mine));
   put('.cs-day', D.perDay === null ? NA : money(D.perDay));
   put('.cs-30d', D.per30d === null ? NA : money(D.per30d));
@@ -467,9 +426,9 @@ function paintCalc() {
         + 'No epoch has settled yet.';
   }
 
-  /* The per-token breakdown: the wedge is split evenly across the six
-     seats — "equal weight", as in the rules. The coin amounts are computed
-     from each constituent's live price. */
+  /* Разбор по токенам: клин делится между шестью местами поровну — «equal
+     weight», как в правилах. Количество монет считается по живой цене
+     каждого участника. */
   const perSeat = D.perSeat;
 
   $$('.crow').forEach((row, i) => {
@@ -486,38 +445,35 @@ function paintCalc() {
 }
 
 /* =========================================================================
-   FONTS AND THE OLD SWITCHES
+   ШРИФТЫ И СТАРЫЕ ПЕРЕКЛЮЧАТЕЛИ
 
-   Five switches used to live here: ?bg= for the card texture, ?fig= for
-   the shape, ?render= for the display method, ?type= and ?mono= for the
-   fonts. They were needed while the decisions were being made by eye on a
-   live page: arguing about texture over messages is pointless, you have to
-   see it.
+   Здесь жили пять переключателей: ?bg= для фактуры карточек, ?fig= для
+   фигуры, ?render= для способа показа, ?type= и ?mono= для шрифтов. Они
+   были нужны, пока решения принимались глазами на живой странице: спорить
+   про фактуру в переписке бессмысленно, её надо увидеть.
 
-   The decisions are made: foil, a six-can pack, Azeret Mono. Everything
-   surplus is deleted — every unused variant is code you have to avoid
-   breaking with any nearby edit, for the sake of a look nobody will see.
+   Решения приняты: фольга, упаковка из шести банок, Azeret Mono. Всё
+   лишнее удалено — каждый неиспользуемый вариант это код, который надо не
+   сломать при любой правке рядом, ради вида, который никто не увидит.
 
-   WHY THE KEYS ARE ERASED. The choice was remembered in localStorage, and
-   that memory outlives a deploy. For anyone who had ever opened
-   `?render=ascii`, the browser remembered "ascii" — and after the
-   parameters were removed they would still have seen the old shape made of
-   characters instead of the pack. That is exactly what happened. To stop
-   reading the keys is not enough; they have to be removed.
+   ЗАЧЕМ СТИРАЮТСЯ КЛЮЧИ. Выбор запоминался в localStorage, и память эта
+   переживает выкладку. У того, кто хоть раз открывал `?render=ascii`,
+   браузер помнил «ascii» — и после удаления параметров он всё равно видел
+   бы старую фигуру из символов вместо упаковки. Ровно это и случилось.
+   Перестать читать ключи недостаточно, их надо убрать.
    ========================================================================= */
 (function forgetOldChoices() {
   try {
     for (const k of ['sixpack.bg', 'sixpack.fig', 'sixpack.render',
-                     'sixpack.type', 'sixpack.mono']) {
+                     'sixpack.type', 'sixpack.mono', 'sixpack.theme']) {
       localStorage.removeItem(k);
     }
-  } catch (_) { /* private mode — there was nowhere to store it anyway */ }
+  } catch (_) { /* приватный режим — там и хранить было негде */ }
 })();
 
 (function loadFonts() {
-  /* preconnect before the link itself: without it the browser first
-     resolves the domain and shakes hands, and only then finds out it needs
-     a font. */
+  /* preconnect до самой ссылки: без него браузер сначала резолвит домен и
+     жмёт руку, и только потом узнаёт, что ему нужен шрифт. */
   for (const href of ['https://fonts.googleapis.com', 'https://fonts.gstatic.com']) {
     const l = document.createElement('link');
     l.rel = 'preconnect'; l.href = href;
@@ -531,75 +487,71 @@ function paintCalc() {
 })();
 
 /**
- * The real token icon in the breakdown row under the calculator.
+ * Настоящая иконка токена в строке разбора под калькулятором.
  *
- * The rows read as mini-cards of the same basket as the six big ones
- * above — so the coin in them has to be the same one, not our abstract
- * mark. The mark stays underneath the image and becomes visible by itself
- * if the image did not load.
+ * Строки читаются мини-карточками той же корзины, что и шесть больших
+ * выше, — значит и монета в них должна быть та же, а не наш абстрактный
+ * значок. Значок остаётся под картинкой и становится видимым сам, если
+ * та не загрузилась.
  *
- * The two traps here are exactly the ones from the big cards, and both
- * cost an evening — so they are repeated word for word, not "from memory":
+ * Две ловушки здесь ровно те же, что были на больших карточках, и обе
+ * стоили по вечеру — поэтому повторены дословно, а не «по памяти»:
  *
- *   1. The redraw key is the symbol AND the image URL. Keyed on the symbol
- *      alone, the row recorded "drawn" on the first read, where there were
- *      no icons yet, and skipped the next read — the one with the icon.
- *   2. No loading="lazy". The image is created outside the document and
- *      only enters it after onload; a lazy image does not load until it is
- *      in the document, which means it never loads. No event arrives at
- *      all — neither onload nor onerror — and the console is empty.
+ *   1. Ключ перерисовки — символ И адрес картинки. По одному символу
+ *      строка запоминала «нарисован» на первом чтении, где иконок ещё не
+ *      было, и следующее чтение — уже с иконкой — пропускала.
+ *   2. Никакого loading="lazy". Картинка создаётся вне документа и
+ *      попадает в него только после onload; ленивая не грузится, пока не
+ *      окажется в документе, то есть не грузится никогда. Событие не
+ *      приходит вовсе — ни onload, ни onerror, и в консоли пусто.
  */
 /* =========================================================================
-   TOKEN TONE
+   ТОН ТОКЕНА
 
-   The icon window on a card is painted in the token's own color, pushed
-   into shadow. The color is stored nowhere and cannot be written in by
-   hand: the basket contents change every three hours, and a list of six
-   colors would be stale the same day. So it has to be MEASURED from the
-   icon itself.
+   Окно с иконкой на карточке красится в цвет самого токена, уведённый в
+   тень. Цвет нигде не хранится и не может быть вписан руками: состав
+   корзины меняется каждые три часа, и список из шести цветов устарел бы в
+   тот же день. Значит его надо ИЗМЕРИТЬ по самой иконке.
 
-   THE MAIN RULE: a color counts only if there is A LOT of it in the icon.
+   ГЛАВНОЕ ПРАВИЛО: цвет засчитывается, только если его в иконке МНОГО.
 
-   The first version took the most saturated hue, and on CASHCAT that gave
-   brown — even though the icon is almost entirely white. The measurement
-   explains why: colored pixels there are 11.5% at saturation 0.17, meaning
-   all of that "color" is fur and shadows on a white photo. For comparison,
-   STONKBROKER is 54% colored at saturation 1.00, DOGO — 25% at 0.90.
+   Первая версия брала самый насыщенный оттенок, и на CASHCAT это дало
+   коричневый — при том что иконка почти целиком белая. Замер объясняет,
+   почему: цветных точек там 11.5% при насыщенности 0.17, то есть весь
+   «цвет» это шерсть и тени на белом фото. Для сравнения у STONKBROKER
+   цветных 54% при насыщенности 1.00, у DOGO — 25% при 0.90.
 
-   So what decides is the share multiplied by the saturation:
+   Поэтому решает произведение доли на насыщенность:
      STONKBROKER 0.54 × 1.00 = 0.54     AI      0.73 × 0.34 = 0.25
      DOGO        0.25 × 0.90 = 0.23     PIPEDOG 0.23 × 0.39 = 0.09
      CASHCAT     0.12 × 0.17 = 0.02     PONS    0.00        = 0.00
-   A threshold of 0.05 cuts off CASHCAT and PONS and keeps PIPEDOG, whose
-   brown is honest — it is a dog's fur filling the whole icon. The gap
-   between CASHCAT and PIPEDOG is almost fivefold, so the threshold is not
-   borderline.
+   Порог 0.05 отсекает CASHCAT и PONS и оставляет PIPEDOG, у которого
+   коричневый честный — это шерсть собаки во всю иконку. Между CASHCAT и
+   PIPEDOG почти пятикратный зазор, так что порог не на грани.
 
-   HOW THE HUE IS COMPUTED. The icon is scaled down to 32×32. Pixels that
-   lie about color are dropped: near-gray ones (channel spread under 0.12),
-   near-black and near-white ones — their "hue" is compression noise — and
-   transparent ones. The rest are spread across twenty-four hue bins
-   weighted by saturation, and inside the winning bin the hue is averaged
-   ON A CIRCLE, through sine and cosine: a plain average of 350° and 10°
-   would give 180°, turning red into turquoise.
+   КАК СЧИТАЕТСЯ ОТТЕНОК. Иконка уменьшается до 32×32. Отбрасываются точки,
+   которые о цвете врут: почти серые (размах каналов меньше 0.12), почти
+   чёрные и почти белые — их «оттенок» это шум сжатия, — и прозрачные.
+   Оставшиеся раскладываются по двадцати четырём корзинам оттенка с весом
+   по насыщенности, а внутри победившей корзины оттенок усредняется ПО
+   КРУГУ, через синус и косинус: обычное среднее между 350° и 10° дало бы
+   180°, то есть из красного получилась бы бирюза.
 
-   The saturation of the result is taken from the measurement too, not set:
-   a weak color has to come out muted, otherwise a pale icon gets a window
-   as bright as STONKBROKER's.
+   Насыщенность результата тоже берётся из замера, а не задаётся: слабый
+   цвет должен выйти приглушённым, иначе бледная иконка получит такое же
+   яркое окно, как STONKBROKER.
 
-   The icon must go through our /api/icon: a third-party CDN does not send
-   CORS, and getImageData on a tainted canvas throws instead of giving a
-   color.
+   Иконка обязана идти через наш /api/icon: чужой CDN не отдаёт CORS, и
+   getImageData на испорченном холсте бросает исключение вместо цвета.
    ========================================================================= */
 const TONES = new Map();
 
-/* The "there is enough color in the icon" threshold. Derived from
-   measuring the six basket icons, see the table above. */
+/* Порог «цвета в иконке достаточно». Выведен из замера шести иконок
+   корзины, см. таблицу выше. */
 const TONE_MIN = 0.05;
 
-/* The neutral tone is written with theme variables, not numbers: there are
-   fifteen themes, and the gray window has to be gray in the tone of the
-   current one. */
+/* Нейтральный тон записан переменными темы, а не числами: тем пятнадцать,
+   и серое окно обязано быть серым в тон текущей. */
 const NEUTRAL_TONE = {
   base: 'color-mix(in srgb, var(--color-block-2) 62%, #000)',
   hi:   'color-mix(in srgb, var(--color-block) 70%, transparent)',
@@ -617,7 +569,7 @@ function dominantTone(img) {
     g.drawImage(img, 0, 0, N, N);
     px = g.getImageData(0, 0, N, N).data;
   } catch (_) {
-    return NEUTRAL_TONE;               // canvas tainted — at least a flat tone
+    return NEUTRAL_TONE;               // холст испорчен — хотя бы ровный тон
   }
 
   const BINS = 24;
@@ -632,9 +584,9 @@ function dominantTone(img) {
 
     const r = px[i] / 255, gg = px[i + 1] / 255, b = px[i + 2] / 255;
     const mx = Math.max(r, gg, b), mn = Math.min(r, gg, b), d = mx - mn;
-    if (d < .12) continue;                       // gray
+    if (d < .12) continue;                       // серое
     const l = (mx + mn) / 2;
-    if (l < .06 || l > .96) continue;            // near-black and near-white
+    if (l < .06 || l > .96) continue;            // почти чёрное и почти белое
 
     const s = d / (1 - Math.abs(2 * l - 1));
     sats.push(s);
@@ -653,8 +605,8 @@ function dominantTone(img) {
 
   if (!opaque || !sats.length) return NEUTRAL_TONE;
 
-  /* Median, not mean: one bright red pixel on a white photo would shift
-     the mean noticeably, the median it would not. */
+  /* Медиана, а не среднее: одна ярко-красная точка на белом фото сдвинула
+     бы среднее заметно, медиану — нет. */
   sats.sort((a, b) => a - b);
   const medS = sats[sats.length >> 1];
   const share = sats.length / opaque;
@@ -665,9 +617,9 @@ function dominantTone(img) {
   const hue = (Math.atan2(hy[best], hx[best]) * 180 / Math.PI + 360) % 360;
   const sat = Math.round(Math.min(70, Math.max(14, medS * 90)));
 
-  /* The lightness is set here, not taken from the icon. The card is dark,
-     and the window has to stay dark no matter how bright the token is:
-     otherwise a glowing rectangle would hang next to a black card. */
+  /* Светлота задана здесь, а не взята у иконки. Карточка тёмная, и окно
+     обязано остаться тёмным независимо от того, насколько ярок токен:
+     иначе рядом с чёрной карточкой висел бы светящийся прямоугольник. */
   return {
     base: `hsl(${hue.toFixed(0)} ${sat}% 9%)`,
     hi:   `hsl(${hue.toFixed(0)} ${Math.min(78, sat + 8)}% 21%)`,
@@ -703,7 +655,7 @@ function setRowIcon(row, t) {
   img.alt = '';
   img.decoding = 'async';
   img.onload = () => { host.classList.add('has-icon'); host.appendChild(img); };
-  img.onerror = () => { /* our mark stays */ };
+  img.onerror = () => { /* остаётся наш знак */ };
   img.src = t.icon;
 }
 
@@ -711,10 +663,10 @@ function wireCalc() {
   const input = $('.calc input[type="range"]');
   if (!input) return;
 
-  /* Typing by hand. The slider is logarithmic and rounds to round numbers
-     — you cannot enter "19,650,000" with it, and that is exactly how many
-     coins the person is holding. Before this field existed, the only way
-     to set your own number was the four presets. */
+  /* Ввод руками. Ползунок логарифмический и округляет до круглого — им
+     нельзя набрать «19 650 000», а именно столько монет у человека и
+     лежит. Пока поля не было, единственным способом задать своё число
+     оставались четыре пресета. */
   const field = $('.calc-amount');
   if (field) {
     const read = () => {
@@ -725,9 +677,8 @@ function wireCalc() {
       paintCalc();
     };
     field.addEventListener('input', read);
-    /* On leaving the field, draw the separators back in and clamp to the
-       bounds: show the correction right away rather than silently changing
-       the number under someone's fingers. */
+    /* На уходе из поля дорисовываем разделители и подтягиваем к границам:
+       правку показываем сразу, а не молча меняем число под пальцами. */
     field.addEventListener('blur', () => {
       HOLD = Math.min(Math.max(HOLD, 0), MAX_HOLD);
       field.value = nf(HOLD);
@@ -735,8 +686,8 @@ function wireCalc() {
     });
     field.addEventListener('keydown', e => { if (e.key === 'Enter') field.blur(); });
   }
-  /* The slider is the source of the value only while it is being dragged.
-     The rest of the time the value is exact and comes from outside. */
+  /* Ползунок — источник значения только когда его тянут. Всё остальное
+     время значение точное и приходит извне. */
   input.addEventListener('input', () => { HOLD = s2a(Number(input.value)); paintCalc(); });
   const map = [1e6, 1e7, 5e7, 2.5e8];
   $$('.chip').forEach((chip, i) => {
@@ -749,13 +700,13 @@ function wireCalc() {
 }
 
 /* =========================================================================
-   Section 4 — the basket cards
+   Раздел 4 — карточки корзины
    ========================================================================= */
 
-/** A sparkline from what is actually known: the 5m, 1h, 6h, 24h changes. */
+/** Спарклайн из того, что реально известно: изменения за 5м, 1ч, 6ч, 24ч. */
 function sparkPoints(t) {
   const past = [t.chg24, t.chg6, t.chg1, t.chg5, 0];
-  const vals = past.map(c => 1 / (1 + (c || 0) / 100));   // price relative to the current one
+  const vals = past.map(c => 1 / (1 + (c || 0) / 100));   // цена относительно текущей
   const min = Math.min(...vals), max = Math.max(...vals);
   const span = max - min || 1;
   return vals.map((v, i) =>
@@ -769,11 +720,10 @@ function paintBasketCards() {
   const w = weights();
   cards.forEach((card, i) => {
     const t = BASKET[i];
-    /* A seat without data is not hidden. A hidden card reads as "there are
-       five of them" — on a site with a six in its name that is the first
-       thing a person notices, and they will be right: what went missing is
-       not decoration, it is a basket position. The seat stays and says
-       that it is being read. */
+    /* Место без данных не прячем. Спрятанная карточка читается как «их
+       пять» — на сайте, у которого шестёрка в названии, это первое, что
+       заметит человек, и он будет прав: пропало не оформление, пропала
+       позиция корзины. Место остаётся и говорит, что читается. */
     if (!t) {
       card.hidden = false;
       card.classList.add('waiting');
@@ -794,10 +744,9 @@ function paintBasketCards() {
 
     const b = $('.tc-top b', card);
     if (b) b.textContent = t.sym;
-    /* The number with a denominator: "01" on its own does not say out of
-       how many. The denominator comes from the model rather than being
-       typed in as a six — a typed number would survive a change of basket
-       size and lie silently. */
+    /* Номер со знаменателем: «01» само по себе не говорит, из скольких.
+       Знаменатель берётся из модели, а не вписан шестёркой — вписанное
+       число пережило бы смену размера корзины и соврало бы молча. */
     const rk = $('.rk', card);
     if (rk) rk.innerHTML = String(i + 1).padStart(2, '0') + '<b>/' + MODEL.seats + '</b>';
     const nm = $('.nm', card);
@@ -810,17 +759,16 @@ function paintBasketCards() {
       ch.className = t.chg24 >= 0 ? 'up' : 'dn';
       ch.textContent = (t.chg24 >= 0 ? '▲ ' : '▼ ') + pct(t.chg24);
     }
-    /* The card art is the real token icon, not our abstract mark. That is
-       what turns a table row into a card: a card needs an object people
-       recognize.
+    /* Арт карточки — настоящая иконка токена, а не наш абстрактный значок.
+       Именно она делает из строки таблицы карточку: у карточки должен быть
+       предмет, который узнают.
 
-       The icons live on third-party CDNs (DexScreener and CoinGecko via
-       the explorer), and every one of them has to be treated as one that
-       will not load: the domain goes down, the image gets deleted, a new
-       basket constituent has none at all. So our mark always sits under
-       the image, and it is what stays alone if onerror fired. An empty
-       frame instead of art looks like broken layout, not like "there is no
-       icon". */
+       Иконки живут на чужих CDN (DexScreener и CoinGecko через обозреватель),
+       и на любую из них надо смотреть как на ту, что не загрузится: домен
+       ляжет, картинку удалят, у нового участника корзины её не окажется
+       вовсе. Поэтому под картинкой всегда лежит наш знак, и он же остаётся
+       один, если onerror сработал. Пустая рамка вместо арта выглядит как
+       поломка вёрстки, а не как «иконки нет». */
     let art = $('.tc-art', card);
     if (!art) {
       art = document.createElement('span');
@@ -828,13 +776,12 @@ function paintBasketCards() {
       art.setAttribute('aria-hidden', 'true');
       card.insertBefore(art, card.firstChild);
     }
-    /* Compare both the symbol and the icon URL. At first it was the symbol
-       alone, and the icons never appeared at all: the first read came from
-       the database, where the records had been written before icons were
-       being collected. The card recorded "PIPEDOG is drawn" and on the
-       next read — the one with the icon — decided there was nothing to
-       redraw. The data arrived later than the rendering decided it was
-       finished. */
+    /* Сравниваем и символ, и адрес иконки. Сначала было только по символу,
+       и иконки не появлялись вовсе: первое чтение приходило из базы, где
+       записи были сделаны до того, как иконки вообще начали собираться.
+       Карточка запоминала «PIPEDOG нарисован» и на следующем чтении — уже
+       с иконкой — решала, что перерисовывать нечего. Данные пришли позже,
+       чем отрисовка решила, что она закончила. */
     if (art.dataset.sym !== t.sym || art.dataset.icon !== (t.icon || '')) {
       art.dataset.sym = t.sym;
       art.dataset.icon = t.icon || '';
@@ -845,29 +792,27 @@ function paintBasketCards() {
         const img = new Image();
         img.alt = '';
         img.decoding = 'async';
-        /* No loading="lazy", and that is not an oversight.
+        /* Без loading="lazy", и это не забывчивость.
 
-           The image is created outside the document and only enters it
-           after onload. The browser defers loading lazy images until they
-           are in the markup near the viewport — and this one never gets
-           there, because it is waiting on its own onload. Measured: with
-           lazy no event arrives at all, neither onload nor onerror, and
-           the card stands forever with the mark instead of the icon.
+           Картинка создаётся вне документа и попадает в него только после
+           onload. Браузер откладывает загрузку ленивых изображений до тех
+           пор, пока они не окажутся в разметке рядом с областью просмотра,
+           — а эта не окажется там никогда, потому что ждёт собственного
+           onload. Замер: с lazy событие не приходит вообще, ни onload, ни
+           onerror, и карточка вечно стоит со знаком вместо иконки.
 
-           No error, no trace in the console: it looks exactly like "there
-           is no icon". */
-        /* Show it only after a successful load: an <img> inserted straight
-           away with a broken URL draws the broken-image icon on top of our
-           mark — worse than showing nothing. */
+           Ни ошибки, ни следа в консоли: выглядит ровно как «иконки нет». */
+        /* Показываем только после успешной загрузки: подставленный сразу
+           <img> со сломанной ссылкой рисует иконку битой картинки поверх
+           нашего знака — хуже, чем не показать ничего. */
         img.onload = () => { art.classList.add('has-icon'); art.appendChild(img); };
-        img.onerror = () => { /* the mark stays */ };
+        img.onerror = () => { /* остаётся знак */ };
         img.src = t.icon;
 
-        /* The window tone is the measured color of the icon itself. The
-           dataset check before applying it is mandatory: the basket is
-           re-read every minute, and by the time the color is computed a
-           different token may already be in this card. It would then get
-           somebody else's color. */
+        /* Тон окна — измеренный цвет самой иконки. Проверка dataset перед
+           применением обязательна: корзина перечитывается каждую минуту, и
+           к моменту, когда цвет посчитан, в этой карточке может стоять уже
+           другой токен. Тогда он получил бы чужой цвет. */
         const want = t.icon;
         tokenTone(want).then(tone => {
           if (!tone || art.dataset.icon !== want) return;
@@ -883,23 +828,22 @@ function paintBasketCards() {
     const poly = $('.spark polyline', card);
     if (poly) poly.setAttribute('points', sparkPoints(t));
 
-    /* Equal weight is a rule of the basket, not a measurement. The number
-       comes from weightsBps: six seats do not divide into ten thousand
-       basis points, so the top seats get one point more. Typing "16.67%"
-       by hand would lie by four hundredths and diverge from the contract. */
+    /* Вес равный — это правило корзины, а не замер. Число берётся из
+       weightsBps: шесть мест на десять тысяч базисных пунктов не делятся,
+       и верхние места получают на пункт больше. Вписать «16.67%» руками
+       значило бы соврать на четырёх сотых и разойтись с контрактом. */
     const bar = $('.wbar .t i', card);
     if (bar) bar.style.width = (w[i] * 100).toFixed(1) + '%';
     const em = $('.wbar + em, .tc-foot em', card);
     if (em) em.textContent = nf(WEIGHTS[i] / 100, 2) + '%';
-    /* The footer holds the pool liquidity, which is exactly what the seat
-       was given for. There used to be a dash here in place of "how much
-       was bought": honest but useless — nothing will be bought before the
-       first epoch, while the basket seat is earned already, and the depth
-       shows it. */
+    /* В подвале — ликвидность пула, то есть ровно то, за что место и
+       дано. Раньше здесь стоял прочерк на месте «сколько куплено»:
+       честно, но бесполезно — куплено не будет ничего до первой эпохи,
+       а место в корзине заслужено уже сейчас, и видно это по глубине. */
     const val = $('.val', card);
     if (val) val.textContent = t.liq > 0 ? money(t.liq) : NA;
 
-    // The card leads to the explorer: check the address without trusting the page.
+    // Карточка ведёт в обозреватель: адрес можно проверить, не веря странице.
     card.style.cursor = 'pointer';
     card.onclick = () => window.open(t.url, '_blank', 'noopener');
     card.title = t.address;
@@ -910,22 +854,20 @@ function paintBasketCards() {
 }
 
 /* =========================================================================
-   Section 5 — the ledger. There were no payouts, so there are no rows and
-   inventing them is not allowed. The empty state says why it is empty.
+   Раздел 5 — реестр. Выплат не было, поэтому строк нет и придумывать их
+   нельзя. Пустое состояние говорит, почему пусто.
    ========================================================================= */
 /**
- * The captions in the section footers. In the original they carry his
- * totals — "total cost $312,880", "5 epochs", "paid in kind … total
- * $128,470". We have none of those numbers, and leaving them would mean
- * promising more than the code can do.
+ * Подписи в подвалах секций. В оригинале там стоят его итоги — «total cost
+ * $312,880», «5 epochs», «paid in kind … total $128,470». Ни одного из этих
+ * чисел у нас нет, и оставить их значило бы обещать больше, чем умеет код.
  */
 function paintFootlines() {
-  /* We do not rewrite his captions — they are part of the layout. Only
-     the spots with his numbers change: where he has the money of settled
-     epochs, we have a dash. Match against the whole text: the captions are
-     written with <b> inside, and a filter for nodes without children
-     skipped them — three numbers went on standing at the bottom of the
-     calculator, the basket and the ledger. */
+  /* Его подписи не переписываем — они часть вёрстки. Меняются только
+     места с его числами: там, где у него деньги закрытых эпох, у нас
+     прочерк. Сравниваем по тексту целиком: подписи набраны с <b> внутри,
+     и фильтр по узлам без детей их пропускал — три числа так и стояли
+     внизу калькулятора, корзины и реестра. */
   const swap = (re, text) => {
     $$('.corners span, .mid, .ann, .fn, .btm span').forEach(el => {
       if (el.closest('.prev') || $('.src', el)) return;
@@ -946,25 +888,25 @@ function paintFootlines() {
 function paintLedger() {
   const rows = $$('.lr');
   if (!rows.length) return;
-  const head = rows[0];                       // the table header
+  const head = rows[0];                       // шапка таблицы
   rows.slice(1).forEach(r => r.remove());
   head.insertAdjacentHTML('afterend',
     '<div class="ledger-empty"><b>No epochs yet.</b> ' +
     'Nothing has been paid, so there is nothing to file. The first row appears ' +
     'once the vault takes its first fee — and it will be a transaction hash on ' +
     'Robinhood Chain, not a number typed into this page.</div>');
-  head.remove();                              // a header with no rows reads as breakage
+  head.remove();                              // шапка без строк читается как поломка
 
   const ann = $$('.ann').find(el => /epochs?$/i.test(el.textContent.trim()));
   if (ann) ann.textContent = 'none yet';
 }
 
 /* =========================================================================
-   The epoch clock. Counted from real UTC, not from a variable somebody
-   will forget to move.
+   Часы эпохи. Считаются от настоящего UTC, а не от переменной, которую
+   забудут перевести.
    ========================================================================= */
 function tick() {
-  const k = $$('.kpi')[7];   // the eighth card, last one across the two rows
+  const k = $$('.kpi')[7];   // восьмая карточка, последняя в двух рядах
   if (!k) return;
   const now = new Date();
   const ms = MODEL.epochHours * 3600 * 1000;
@@ -977,7 +919,7 @@ function tick() {
 }
 
 /* =========================================================================
-   Source status — out loud, not in the console
+   Состояние источника — вслух, а не в консоли
    ========================================================================= */
 function paintStatus() {
   let box = $('.src');
@@ -985,11 +927,10 @@ function paintStatus() {
     box = document.createElement('span');
     box.className = 'src';
     box.innerHTML = '<i class="dot"></i><span class="txt"></span>';
-    /* The original has "index · rotating" in the corner of the stage — we
-       do not take that spot. The source badge lives in the tag next to the
-       first section's heading, beside his text rather than instead of it:
-       clearing out somebody else's node means erasing the very thing the
-       layout was copied for. */
+    /* В углу стакана у оригинала стоит «index · rotating» — не занимаем
+       его. Метка источника живёт в шильдике у заголовка первой секции,
+       рядом с его надписью, а не вместо неё: чистить чужой узел значит
+       стирать то, ради чего копировали вёрстку. */
     const host = $('.prev') || $('.corners');
     if (host) host.appendChild(box); else document.body.appendChild(box);
   }
@@ -1003,76 +944,26 @@ function paintStatus() {
   box.className = 'src ok';
   const bits = [];
   if (META.source === 'fallback') bits.push('partial list');
-  /* Who went for the data is part of the truth about it. When the service
-     is unavailable the page reads the chain itself: it works the same, but
-     third-party free APIs fail more often, and "partial list" is then not
-     an accident but a consequence. Staying quiet about it means passing
-     one off as the other. */
+  /* Кто сходил за данными — часть правды о них. Когда сервис недоступен,
+     страница читает цепь сама: работает так же, но чужие бесплатные API
+     падают чаще, и «partial list» тогда — не случайность, а следствие.
+     Молчать об этом значит выдавать одно за другое. */
   if (META.via === 'direct') bits.push('read in-browser');
-  /* Show the server-side age: if the collector is stuck, "2s ago" by the
-     browser clock would lie about freshness — the page refreshed, not the
-     data. */
+  /* Возраст показываем серверный: если сборщик застрял, «2s ago» по часам
+     браузера соврало бы про свежесть — обновилась страница, а не данные. */
   const seenMs = Number.isFinite(META.age) ? Date.now() - META.age : META.at;
   bits.push(ago(seenMs));
   txt.textContent = '· ' + bits.join(' · ');
 }
 
 /* =========================================================================
-   The palette. Temporary: once the accent is picked, the panel and the
-   surplus themes go away.
-   ========================================================================= */
-const THEME_KEY = 'sixpack.theme';
-
-function applyTheme(id) {
-  document.documentElement.dataset.theme = id;
-  try { localStorage.setItem(THEME_KEY, id); } catch (_) { /* private mode */ }
-  const t = THEMES.find(x => x.id === id) || THEMES[0];
-  const meta = $('meta[name="theme-color"]');
-  if (meta) meta.content = t.bg;
-  $$('.pal-item').forEach(el =>
-    el.setAttribute('aria-pressed', String(el.dataset.pal === id)));
-  const now = $('.pal-now');
-  if (now) now.textContent = t.label;
-}
-
-function wirePalette() {
-  const pal = document.createElement('aside');
-  pal.className = 'pal';
-  /* The attribute is data-pal, not data-theme: the theme selectors match
-     [data-theme] and would repaint every button in its own theme. */
-  pal.innerHTML =
-    '<div class="pal-list">' +
-    THEMES.map(t =>
-      '<button type="button" class="pal-item" data-pal="' + t.id + '" ' +
-      'aria-pressed="false" title="' + t.label + '" aria-label="' + t.label + '" ' +
-      'style="--sw-bg:' + t.bg + ';--sw-neon:' + t.c + '"></button>').join('') +
-    '</div><div class="pal-meta"><span class="pal-now"></span>' +
-    '<span>' + THEMES.length + ' themes</span>' +
-    '<button type="button" aria-label="Close palette">✕</button></div>';
-  document.body.appendChild(pal);
-
-  $$('.pal-item', pal).forEach(el =>
-    el.addEventListener('click', () => applyTheme(el.dataset.pal)));
-  $('.pal-meta button', pal).addEventListener('click', () => { pal.hidden = true; });
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') pal.hidden = true;
-    if (e.key === 'p' && !/input|textarea/i.test(e.target.tagName)) pal.hidden = !pal.hidden;
-  });
-
-  let saved = null;
-  try { saved = localStorage.getItem(THEME_KEY); } catch (_) {}
-  applyTheme(THEMES.some(t => t.id === saved) ? saved : THEMES[0].id);
-}
-
-/* =========================================================================
-   The X and GitHub links. The accounts do not exist yet, so the buttons
-   say so honestly instead of leading nowhere. Once the addresses exist,
-   put them in SOCIAL and the buttons become ordinary links; nothing else
-   needs changing.
+   Ссылки на X и GitHub. Аккаунтов ещё нет, поэтому кнопки честно об этом
+   говорят вместо того, чтобы вести в никуда. Появятся адреса — вписать в
+   SOCIAL, и кнопки станут обычными ссылками, ничего больше менять не надо.
    ========================================================================= */
 const SOCIAL = {
   x: '',        // https://x.com/…
-  github: '',   // https://github.com/…
+  github: 'https://github.com/sixpack-index/6pack',
 };
 
 function wireSocial() {
@@ -1083,10 +974,9 @@ function wireSocial() {
     el.classList.add('soon');
     el.addEventListener('click', e => {
       e.preventDefault();
-      /* On an icon button there is no text to swap out — it has none. So
-         "soon" is said with a tooltip and a short blink of the border
-         rather than a substituted string: the button must not behave
-         silently. */
+      /* У кнопки-иконки подменять текст нечем — у неё его нет. Поэтому
+         «скоро» говорим подсказкой и коротким миганием рамки, а не
+         подстановкой строки: молча кнопка вести себя не должна. */
       const icon = !el.textContent.trim();
       if (icon) {
         const was = el.getAttribute('title');
@@ -1102,11 +992,10 @@ function wireSocial() {
   });
 }
 
-/* The wallet lives in wallet.js: connecting, the network, balances. All we
-   do here is hand it the button. It used to answer honestly with "NO
-   CONTRACT YET" — that was true while there was nothing to connect to, but
-   the network and gas exist without our token too, and looking at them is
-   already useful. */
+/* Кошелёк живёт в wallet.js: подключение, сеть, балансы. Здесь только
+   передаём ему кнопку. Раньше она честно отвечала «NO CONTRACT YET» —
+   это было правдой, пока подключаться было не к чему, но сеть и газ
+   существуют и без нашего токена, и посмотреть их полезно уже сейчас. */
 function wireConnect() {
   if (window.SixpackWallet) {
     window.SixpackWallet.wire();
@@ -1114,26 +1003,24 @@ function wireConnect() {
   }
 }
 
-/* The wallet feeds the real balance in here — once; after that the person
-   moves the slider themselves. What we expose is a function, not the
-   slider itself: let the rule for how a number turns into a position stay
-   in one place. */
+/* Кошелёк подставляет сюда настоящий баланс — один раз, дальше человек
+   двигает ползунок сам. Наружу отдаём функцию, а не сам ползунок: пусть
+   правило «как число превращается в позицию» остаётся в одном месте. */
 window.SixpackCalc = function (amount) {
   if (!Number.isFinite(amount) || amount <= 0) return;
-  /* The wallet balance goes in as-is, without rounding: it is their real
-     number, and swapping it for a "pretty" one is not allowed. */
+  /* Баланс кошелька подставляется как есть, без округления: это его
+     настоящее число, и подменять его «красивым» нельзя. */
   setHold(Math.min(amount, MODEL.supply));
   $$('.chip').forEach(c => c.setAttribute('aria-pressed', 'false'));
 };
 
-/* The contract address under the heading: the first thing people look for
-   when they arrive from an exchange or a feed. It appears together with
-   the address and disappears without it — an empty "contract: —" line
-   helps nobody.
+/* Адрес контракта под заголовком: то, что первым делом ищут, придя с
+   биржи или из ленты. Появляется вместе с адресом и исчезает без него —
+   пустая строка «contract: —» не помогает никому.
 
-   The copy button has to respond to a press. On loothood the same button
-   lived for a month looking flawless and copying nothing: nobody saw the
-   error, because it stayed silent. */
+   Кнопка копирования обязана отвечать нажатию. На loothood такая же
+   кнопка прожила месяц, выглядя безупречно и не копируя ничего: ошибку
+   никто не видел, потому что она молчала. */
 function paintContract() {
   const box = $('.ca');
   if (!box) return;
@@ -1162,9 +1049,8 @@ function wireContract() {
       await navigator.clipboard.writeText(token);
       say('copied', true);
     } catch (_) {
-      /* The clipboard is closed off — for example, the page is not served
-         over https. Then select the text so the person can copy it
-         themselves instead of guessing. */
+      /* Буфер закрыт — например, страница открыта не по https. Тогда
+         выделяем текст, чтобы человек скопировал сам, а не гадал. */
       const v = $('.ca-v');
       if (v) {
         const r = document.createRange();
@@ -1177,22 +1063,21 @@ function wireContract() {
   });
 }
 
-/* The buy link. It appears only once the token address is known: a "buy"
-   button that leads nowhere is worse than no button — on the previous
-   project one like it sent a buyer to a 404. */
+/* Ссылка на покупку. Появляется только когда адрес токена известен: кнопка
+   «купить», ведущая в никуда, хуже отсутствующей — на прошлом проекте
+   такая отправила покупателя на 404. */
 function paintBuy() {
   const token = window.SixpackChain.launchAddress('token');
   const url = window.SixpackChain.buyLink();
   let a = $('.acts .btn.buy');
-  /* No token address or no link means no button.
+  /* Нет адреса токена или нет ссылки — нет и кнопки.
 
-     The link now appears by itself: as soon as the token has a pool,
-     chain.js assembles the address of its page on the venue. Before, there
-     was no button until somebody typed the link into the console by hand,
-     and that made the launch depend on whether a live person remembered it
-     in the first minutes.
+     Ссылка теперь появляется сама: как только у токена есть пул, chain.js
+     складывает адрес его страницы на витрине. Раньше кнопки не было, пока
+     ссылку не впишут в консоль руками, и это ставило запуск в зависимость
+     от того, вспомнит ли об этом живой человек в первые минуты.
 
-     It stays empty here only until launch — while there is no pool yet. */
+     Пусто здесь остаётся только до запуска — когда пула ещё нет. */
   if (!token || !url) { if (a) a.remove(); return; }
   if (!a) {
     a = document.createElement('a');
@@ -1207,7 +1092,7 @@ function paintBuy() {
 }
 
 /* =========================================================================
-   Assembly
+   Сборка
    ========================================================================= */
 function paintAll() {
   paintTape();
@@ -1222,13 +1107,12 @@ function paintAll() {
 }
 
 async function load() {
-  /* Our own token is read separately and silently: while there is no
-     address it returns an object of zeros and the page shows dashes. Put
-     the address in and the same fields fill from the chain; nothing else
-     needs editing. */
+  /* Свой токен читается отдельно и молча: пока адреса нет, вернётся объект
+     с нулями, и страница покажет прочерки. Впишешь адрес — те же поля
+     заполнятся из цепи, ничего больше править не нужно. */
   window.SixpackChain.readLaunch(part => { SELF = part; paintAll(); })
     .then(s => { SELF = s; paintAll(); })
-    .catch(e => console.warn('our own token did not read:', e));
+    .catch(e => console.warn('свой токен не прочитался:', e));
 
   try {
     const d = await window.SixpackChain.readChain();
@@ -1236,22 +1120,21 @@ async function load() {
     META = { source: d.source, scanned: d.scanned, priced: d.priced, at: d.at, failed: null, via: d.via, age: d.age };
     if (!BASKET.length) throw new Error('the basket came back empty');
   } catch (e) {
-    console.error('reading the chain failed:', e);
+    console.error('чтение цепи не удалось:', e);
     META.failed = e.message || 'unknown error';
   }
   paintAll();
 }
 
 document.querySelectorAll('[data-brand-name]').forEach(el => { el.textContent = BRAND.name; });
-/* The tape is padded right away, from the markup, without waiting for the
-   chain: while there is no data a person is looking at the tape anyway,
-   and a short one reads as breakage rather than as "still loading". */
+/* Лента дополняется сразу, по разметке, не дожидаясь цепи: пока данных
+   нет, человек всё равно смотрит на ленту, и короткая читается как
+   поломка, а не как «ещё грузится». */
 padTape();
 window.addEventListener('resize', padTape, { passive: true });
 wireStage();
 wireCalc();
 setHold(HOLD);
-wirePalette();
 wireConnect();
 wireSocial();
 wireContract();

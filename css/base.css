@@ -36,3 +36,7 @@
   --font-archivo: "Archivo", "Archivo Fallback";
   --font-jbmono:  "JetBrains Mono", "JetBrains Mono Fallback";
 }
+
+/* The header mark is an image, not letters. A textual "6PK" said nothing;
+   the can is recognisable and matches the browser tab. */
+img.badge { padding: 0; background: none; object-fit: cover; }

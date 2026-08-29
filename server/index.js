@@ -184,6 +184,7 @@ async function state() {
       vault: s.vault || '',
       note: s.note || '',
       buy: s.buy || '',
+      operator: s.operator || '',
     },
     /* The ranking goes out beside the basket and never instead of it: the
        page draws the six, and only PACKHOOD reads the ten. Falling back to
@@ -211,6 +212,19 @@ async function state() {
       age: age(selfRow),
     } : null,
     epochs: epochCount,
+    /* The balance on the working wallet. It lives in the collector's memory
+       rather than in the database: this is not history but "how much right
+       now", and after a restart it re-reads itself within a minute. Until
+       it has been read it is null, and the console says "not read yet"
+       rather than "zero". */
+    gas: {
+      address: s.operator || '',
+      eth: health.gas.eth,
+      epochs: health.gas.epochs ?? null,
+      at: health.gas.at,
+      ok: health.gas.ok,
+      why: health.gas.why,
+    },
   };
 }
 
@@ -258,6 +272,10 @@ async function config(req, res) {
   jobs.collectSelf();
   jobs.collectHolders();
   jobs.collectVault();
+  /* And the gas balance: otherwise, after the operator address is written,
+     the console would say "not read yet" for up to five minutes — which is
+     exactly what the person just tried to find out. */
+  jobs.collectGas();
 
   return send(res, 200, { ok: true, changed, config: (await state()).config });
 }

@@ -14,7 +14,18 @@ const C = globalThis.SixpackCore;
    any key at all in the database, and one day it will create a typo
    instead of an address — silently, and it will turn up only when the site
    shows a dash while the console is filled in. */
-export const WRITABLE = new Set(['token', 'vault', 'note', 'buy']);
+/* The operator's address lives in the settings too.
+
+   Under the scheme adopted 29 August the operator is a personal wallet and
+   the ether sits on it in advance: the fee is forwarded by hand and the
+   wallet is topped up by hand. It used to refill itself from the fee it
+   collected; now the balance will run out one day — and between "ran out"
+   and "noticed" epochs simply stop closing, silently.
+
+   So the server needs the address: it reads the balance and shows it on
+   the console. There is no key here and there cannot be — address only,
+   read only. */
+export const WRITABLE = new Set(['token', 'vault', 'note', 'buy', 'operator']);
 
 /* The buy link lives in the settings and not in the code.
 
@@ -58,7 +69,7 @@ export function validateConfig(body) {
        can be gone around, and a typo in the treasury address costs the
        launch. An empty string is allowed on purpose — it is the off
        switch: erase the address, the calculation goes dark, the site lives. */
-    if ((k === 'token' || k === 'vault') && val !== '' && !C.isAddress(val)) {
+    if ((k === 'token' || k === 'vault' || k === 'operator') && val !== '' && !C.isAddress(val)) {
       return { ok: false, error: 'the address "' + k + '" must be 0x and forty hex digits, characters given: ' + val.length };
     }
     if (k === 'note' && val.length > 500) {

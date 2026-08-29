@@ -88,7 +88,19 @@ export const SEL = {
   quoteV4:           '0xaa9d21cb',  // quoteExactInputSingle(((address,address,uint24,int24,address),bool,uint128,bytes))
 };
 
-const RPC = C.CHAIN.rpc;
+/* The node comes from an environment variable, defaulting to the live one.
+
+   This is what it is all for: a full epoch is rehearsed against a fork — a
+   local copy of the live chain (`anvil --fork-url`) where anything can be
+   signed and nothing leaves the machine. While the address was a hardcoded
+   constant, such a rehearsal meant editing code right before launch, which
+   is the most dangerous edit there is.
+
+   Sending transactions goes through the same `rpc`, so one variable covers
+   the whole crank. */
+const RPC = process.env.SIXPACK_RPC || C.CHAIN.rpc;
+export const RPC_URL = RPC;
+export const IS_DEFAULT_RPC = RPC === C.CHAIN.rpc;
 
 let id = 0;
 

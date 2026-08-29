@@ -184,6 +184,42 @@ export function splitWei(total, n) {
 }
 
 /**
+ * Redistribute the shares of seats that had no usable pool.
+ *
+ * A seat with no pool is not a small inconvenience. Its share of the epoch
+ * would otherwise simply hang on the operator's wallet: not paid out to
+ * holders, not returned, and the basket turns out not to be the one that
+ * was promised.
+ *
+ * The answer: split the blind seats' share among the rest, within THE SAME
+ * epoch. Carrying it into the next one was the second option and was
+ * rejected — it requires holding a remainder between runs, and the money
+ * sits idle the whole time.
+ *
+ * The split uses the same splitWei: the total has to stay identical down to
+ * the last wei, or the redistribution itself opens the hole it exists to
+ * close.
+ *
+ * @param seats the plan's seats (each with spendWei)
+ * @param blind the set of symbols with nowhere to buy
+ */
+export function redistribute(seats, blind) {
+  const live = seats.filter(s => !blind.has(s.sym));
+  const dead = seats.filter(s => blind.has(s.sym));
+  if (!dead.length) return { seats, moved: 0n, live: live.length };
+  if (!live.length) return { seats: seats.map(s => ({ ...s, spendWei: 0n })),
+                             moved: 0n, live: 0 };
+
+  const moved = dead.reduce((a, s) => a + s.spendWei, 0n);
+  const extra = splitWei(moved, live.length);
+  let k = 0;
+  const out = seats.map(s => blind.has(s.sym)
+    ? { ...s, spendWei: 0n, skipped: true }
+    : { ...s, spendWei: s.spendWei + extra[k++] });
+  return { seats: out, moved, live: live.length };
+}
+
+/**
  * The full plan for an epoch: what to buy, who gets how much.
  * Returns what the crank prints in a dry run and executes in a live one.
  */

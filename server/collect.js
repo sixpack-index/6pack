@@ -16,6 +16,11 @@
 
 import './../core.js';
 import { q, settings } from './db.js';
+/* The gas an epoch costs is computed by the crank — the same function, not
+   a copy of it. Two arithmetics answering one question will diverge, and
+   they will diverge silently: the console says "forty epochs of runway",
+   the crank stops on the third. */
+import { gasForEpoch } from './../crank/plan.js';
 
 const C = globalThis.SixpackCore;
 
@@ -28,6 +33,7 @@ const EVERY = {
   self: 60_000,
   holders: 10 * 60_000,
   vault: 5 * 60_000,
+  gas: 5 * 60_000,
 };
 
 /* What happened last time. Handed back in /api/health: a silent collector
@@ -39,6 +45,7 @@ export const health = {
   self: { at: null, ok: null, why: null },
   holders: { at: null, ok: null, why: null },
   vault: { at: null, ok: null, why: null, added: 0 },
+  gas: { at: null, ok: null, why: null, eth: null, epochs: null },
 };
 
 function mark(what, ok, why, extra) {
@@ -173,6 +180,92 @@ async function collectVault() {
   }
 }
 
+/* ---------- the operator's gas ----------
+
+   Under the scheme of 29 August the fee is forwarded by hand and the
+   working wallet is topped up by hand. So the balance will run out one day
+   — and it will look like nothing at all: the crank simply stops closing
+   epochs, the site keeps showing the basket, and nobody notices until the
+   first holder complains.
+
+   So the balance is read here and shown on the console. Read by a direct
+   call to the node: the explorer is not needed for a single number and
+   answers 403 without a header, while eth_getBalance is on every node
+   always.
+
+   There is no key here and there cannot be: the server knows the address
+   and can only look. Signing is the crank's job, on its own machine. */
+async function collectGas() {
+  try {
+    const s = await settings();
+    const who = s.operator;
+    /* Wipe ALL the fields, not just the balance. `mark` merges the new into
+       the old, and without this the runway in epochs survived the address
+       being cleared: no address, no balance, and yet "enough for 3 epochs".
+       A field that outlives its cause lies to its first reader. */
+    if (!C.isAddress(who)) {
+      mark('gas', true, null, { eth: null, epochs: null, wei: null,
+                                gasPriceWei: null, address: '' });
+      return;
+    }
+
+    const r = await fetch(C.CHAIN.rpc, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0', id: 1, method: 'eth_getBalance', params: [who, 'latest'],
+      }),
+    });
+    if (!r.ok) throw new Error('the node answered ' + r.status);
+    const j = await r.json();
+    if (j.error) throw new Error(j.error.message || 'the node returned an error');
+    if (typeof j.result !== 'string') throw new Error('the node gave no balance');
+
+    /* Through BigInt, not Number: the balance arrives in wei, and 0.05 ETH
+       is 5e16 — past the integer range of a double. Divide afterwards. */
+    const wei = BigInt(j.result);
+    const eth = Number(wei) / 1e18;
+
+    /* "0.031 ETH" on its own answers nothing: it is unclear whether that is
+       a lot or whether everything stops tomorrow. So the balance is turned
+       into epochs straight away — into the one thing this ether is for.
+
+       The number of recipients comes from the latest holder snapshot:
+       distribution is transfers, and there are more of them the more
+       holders there are. While holders have not been read yet, the rules'
+       ceiling is used (10,000 wallets): better to alarm early than to
+       reassure wrongly. */
+    let epochs = null, gasPriceWei = null;
+    try {
+      const g = await fetch(C.CHAIN.rpc, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_gasPrice', params: [] }),
+      });
+      const gj = await g.json();
+      if (typeof gj.result === 'string') {
+        gasPriceWei = BigInt(gj.result);
+        const hold = s.token
+          ? (await q('select count from holders where token = $1 order by at desc limit 1',
+                     [s.token])).rows[0]
+          : null;
+        const recipients = hold && Number.isFinite(Number(hold.count))
+          ? Number(hold.count)
+          : 10_000;
+        const perEpoch = BigInt(gasForEpoch(recipients)) * gasPriceWei;
+        if (perEpoch > 0n) epochs = Number(wei / perEpoch);
+      }
+    } catch (_) { /* without a gas price there is simply no runway in epochs */ }
+
+    mark('gas', true, null, {
+      eth, wei: wei.toString(), address: who, epochs,
+      gasPriceWei: gasPriceWei === null ? null : gasPriceWei.toString(),
+    });
+  } catch (e) {
+    mark('gas', false, e.message);
+  }
+}
+
 /* ---------- launching ---------- */
 
 /**
@@ -186,6 +279,7 @@ export function startCollector() {
   run(collectSelf, EVERY.self);
   run(collectHolders, EVERY.holders);
   run(collectVault, EVERY.vault);
+  run(collectGas, EVERY.gas);
 }
 
-export const jobs = { collectBasket, collectSelf, collectHolders, collectVault };
+export const jobs = { collectBasket, collectSelf, collectHolders, collectVault, collectGas };

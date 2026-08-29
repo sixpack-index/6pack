@@ -177,6 +177,24 @@ function isAddress(a) {
   return ADDR_RE.test(a || '');
 }
 
+/* The explorer shuts robots out.
+
+   Measured 29 August: `curl` with no headers gets a 403 on every api/v2
+   route, and the same request with an ordinary browser string gets a 200.
+   It used to hand back a 500 every other time; now it closes itself
+   quietly against anything that looks like a robot.
+
+   Because of that the site was living on the fallback list, and the crank
+   could not read holders at all — meaning epochs would never have closed,
+   and it would have looked like "the explorer is down".
+
+   In a browser this header cannot be set: it is on the forbidden list and
+   fetch ignores it silently, substituting the real one. The value is
+   needed only by the server and the crank, where the User-Agent defaults
+   to `node`. */
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+         + '(KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36';
+
 /**
  * fetch with a ceiling on time and with retries.
  * A hanging request is worse than a failed one — hence the timeout. The
@@ -190,7 +208,10 @@ async function ask(url, tries = 3) {
     const stop = new AbortController();
     const timer = setTimeout(() => stop.abort(), TIMEOUT_MS);
     try {
-      const res = await fetch(url, { signal: stop.signal, headers: { accept: 'application/json' } });
+      const res = await fetch(url, {
+        signal: stop.signal,
+        headers: { accept: 'application/json', 'user-agent': UA },
+      });
       if (!res.ok) throw new Error('response ' + res.status);
       return await res.json();
     } catch (e) {
@@ -575,7 +596,7 @@ function dividendFor(amount, vol24, price) {
 const CORE = {
   CHAIN, API, MODEL, NOT_CONSTITUENTS, STOCKISH, LPISH, SEARCH_WORDS,
   FALLBACK_TOKENS, CHUNK, ADDR_RE,
-  isAddress, ask, tokenAddresses, pairsFor, pairsBySearch,
+  isAddress, ask, UA, tokenAddresses, pairsFor, pairsBySearch,
   foldPairs, shape, isConstituent, isAlive, ALIVE_RATIO, readBasket, iconsFor, fixIconUrl, holdersOf, marketOf, epochPot, dividendFor,
   weightsBps,
 };

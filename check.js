@@ -139,5 +139,39 @@ const ok = (name, cond, extra = '') => {
   ok('the largest weighs more than all of them', w[0] === Math.max(...w));
 }
 
+/* -------------------------------------------------------------------------
+   Somebody else's totals are blanked before the network, not after.
+
+   The markup has a payout history baked in that never happened: "$128,305
+   dividends paid out", "across 9 epochs", "last epoch paid $7,254". Em
+   dashes cover it, but while that covering lived inside `paintAll()` it
+   waited for the server — 0.8 seconds by measurement, longer on a phone,
+   and never at all if the script breaks.
+
+   The check is structural because there is no DOM here: the three paints
+   have to be called before `load()`. If somebody removes them "as
+   duplicates", this goes red instead of quiet.
+   ------------------------------------------------------------------------- */
+{
+  const at = name => src.indexOf('\n' + name + '();');
+  const load = src.lastIndexOf('\nload();');
+  ok('load() is called last', load > 0);
+  for (const fn of ['paintSummary', 'paintBasket', 'paintFootlines', 'paintLedger']) {
+    const i = at(fn);
+    const good = i > 0 && i < load;
+    /* The note prints only on failure: `ok` shows extra unconditionally,
+       and "called after load()" next to the word "ok" read as a
+       contradiction. */
+    ok('"' + fn + '" blanks the numbers before the network', good,
+       good ? '' : (i < 0 ? 'not called at all' : 'called after load()'));
+  }
+  /* And the numbers themselves: if the borrowed totals ever leave the
+     markup, there is nothing left to blank, and the check above would
+     start guarding an empty room. */
+  const html = fs.readFileSync(path.join(here, 'index.html'), 'utf8');
+  ok('the borrowed totals are still in the markup — otherwise nothing to blank',
+     html.includes('$128,305') && html.includes('$7,254'));
+}
+
 console.log(fail ? 'FAILED: ' + fail : 'all checks passed');
 process.exit(fail ? 1 : 0);

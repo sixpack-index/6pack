@@ -1183,6 +1183,29 @@ setHold(HOLD);
 wireConnect();
 wireSocial();
 wireContract();
+/* Somebody else's totals are blanked BEFORE the network, not after.
+
+   The markup arrived with another project's results inside it: "$128,305
+   dividends paid out", "across 9 epochs", "last epoch paid $7,254",
+   "eligible supply 870.0M". All of it gets covered by em dashes — but the
+   covering lived inside `paintAll()`, which means it waited for the
+   server's answer. Measured: 0.8 seconds on a fast connection, longer on a
+   phone, and forever if the script breaks.
+
+   The worst possible first screen: a token that has never paid anybody
+   anything, showing $128,305 distributed. One screenshot on launch day and
+   the explaining takes a long time.
+
+   So these three paints run here, synchronously, on empty data: the page
+   starts at em dashes and fills in from the chain, not the other way
+   round. The ledger below has worked this way since day one.
+
+   The tape and the token cards are deliberately NOT added here: those hold
+   real prices of real tokens — stale, but not invented — and an empty tape
+   on the first screen reads as breakage. */
+paintSummary();
+paintBasket();
+paintFootlines();
 paintLedger();
 paintCalc();
 paintStatus();

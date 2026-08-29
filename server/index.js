@@ -12,7 +12,7 @@
      POST /api/config           writing the settings, a key is needed
      GET  /                     a short help, so the address is not silent
 
-   The write key lives in the DECIMA_KEY variable on Railway and nowhere
+   The write key lives in an environment variable on Railway and nowhere
    else: not in the repository, not in the documents. A document ends up in
    a commit one day.
    ========================================================================= */
@@ -25,7 +25,17 @@ import { validateConfig, clientBucket } from './rules.js';
 
 const C = globalThis.SixpackCore;
 const PORT = Number(process.env.PORT) || 3000;
-const KEY = process.env.DECIMA_KEY || '';
+/* The variable is `SIXPACK_CONSOLE_KEY`; the old `DECIMA_KEY` is still
+   accepted. The rename is deliberately in two steps: dropping the old name
+   at the same time as the code change would lock the console out between
+   the server deploy and the variable edit — which is exactly what once
+   happened with the request header.
+
+   Stated separately, because confusing these two costs money: this is NOT
+   the crank's key. This is a password for writing to the console and it
+   cannot spend a cent. The crank's `SIXPACK_KEY` is a wallet private key,
+   which is the money itself. Two different secrets. */
+const KEY = process.env.SIXPACK_CONSOLE_KEY || process.env.DECIMA_KEY || '';
 
 /* ---------- responses ---------- */
 
@@ -39,7 +49,7 @@ function send(res, code, body, extra) {
        opened straight at the Railway address, and without it the console
        would silently not work. */
     'access-control-allow-origin': '*',
-    'access-control-allow-headers': 'content-type, x-6pack-key, x-dimehood-key, x-decima-key',
+    'access-control-allow-headers': 'content-type, x-6pack-key',
     'access-control-allow-methods': 'GET, POST, OPTIONS',
     ...(extra || {}),
   });
@@ -65,25 +75,17 @@ const TRIES = new Map();
 const MAX_TRIES = 10;
 const LOCK_MS = 15 * 60_000;
 
-/* The name of the header that carries the key.
-
-   We accept both: the project was renamed and the page started sending
-   `x-dimehood-key` while the server was still waiting for `x-decima-key`,
-   and entry stopped working, although the key itself was right. A bulk
-   text replacement went over the browser side and did not touch the
-   server side.
-
-   Two names remove not only this breakage but its whole class: on a
-   rollout the storefront and the service are updated separately, and in
-   between one half is always older than the other. An agreement that
-   breaks depending on the deploy order is bound to break one day. */
 function keyFrom(req) {
-  /* Three header names, because the project was renamed twice while the
-     key lies in the browser's localStorage and survives a rename. To
-     remove the old ones means throwing a person out of the console on
-     exactly the day when it is needed most. */
-  return req.headers['x-6pack-key'] || req.headers['x-dimehood-key']
-      || req.headers['x-decima-key'] || '';
+  /* One header name, and it is `x-6pack-key`.
+
+     There were three: the project was renamed twice, and the key lives in
+     the browser's localStorage and survives a rename, so the old names
+     were kept for anyone with an old tab open.
+
+     Checked 29 August: both `chain.js` and the console send only the new
+     name — there are no old senders left. A header nobody sends is not
+     compatibility, it is an extra door on the allow-list. */
+  return req.headers['x-6pack-key'] || '';
 }
 
 function whoFrom(req) {
@@ -384,7 +386,7 @@ const server = http.createServer(async (req, res) => {
          once what this is and whether it is alive. */
       return send(res, 200, {
         ok: true,
-        what: 'decima api',
+        what: '6pack api',
         routes: ['/api/state', '/api/epochs', '/api/probe?token=0x…', '/api/icon?u=…', '/api/health', 'POST /api/auth', 'POST /api/config'],
       });
     }

@@ -1,5 +1,5 @@
 {
-  "name": "decima",
+  "name": "sixpack",
   "private": true,
   "type": "module",
   "description": "An index token on Robinhood Chain: a static storefront plus a server that reads the chain and stores the settings.",

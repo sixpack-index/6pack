@@ -52,8 +52,9 @@ async function collectBasket() {
     const d = await C.readBasket();
     if (!d.basket.length) throw new Error('the basket came back empty');
     await q(
-      'insert into basket (source, scanned, priced, rows) values ($1, $2, $3, $4)',
-      [d.source, d.scanned, d.priced, JSON.stringify(d.basket)]
+      'insert into basket (source, scanned, priced, rows, ranking) values ($1, $2, $3, $4, $5)',
+      [d.source, d.scanned, d.priced, JSON.stringify(d.basket),
+       JSON.stringify(d.ranking || d.basket)]
     );
     mark('basket', true, null, { source: d.source });
   } catch (e) {

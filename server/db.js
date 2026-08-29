@@ -101,6 +101,20 @@ export async function migrate() {
     );
     create index if not exists basket_at on basket (at desc);
 
+    /* The chain's top ten, stored beside the basket of six.
+
+       A column and not a table: it is written and read in exactly the same
+       moment as the rows column, by the same insert and the same select. A separate
+       table would need its own timestamp, and two timestamps of one reading
+       drift apart — then the ranking would answer for one minute and the
+       basket for another.
+
+       Nullable on purpose: snapshots written before this column existed
+       stay valid, and a reader that finds null falls back to the basket. An
+       empty ranking must read as "not collected yet", never as "the chain
+       has no tokens". */
+    alter table basket add column if not exists ranking jsonb;
+
     /* Treasury payouts. The key is the transaction hash, so rereading the
        same history doubles nothing: the collector may overlap its windows
        as much as it likes. A race between two simultaneous collectors is

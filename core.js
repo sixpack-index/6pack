@@ -396,13 +396,30 @@ async function readBasket() {
     if (!prev || t.vol24 > prev.vol24) seats.set(key, t);
   });
 
-  const basket = [...seats.values()].sort((a, b) => b.liq - a.liq).slice(0, MODEL.seats);
-  /* Icons are picked up only for those who made it into the basket: the
-     list before the slice is hundreds of tokens, and a trip to the
-     explorer for each of them would take down both it and us. */
-  await iconsFor(basket);
+  const ranked = [...seats.values()].sort((a, b) => b.liq - a.liq);
+  const basket = ranked.slice(0, MODEL.seats);
 
-  return { basket, scanned: list.length, priced: priced.length, alive: all.length, source, at: Date.now() };
+  /* A longer ranked list, handed out alongside the basket.
+
+     PACKHOOD needs the chain's top ten: each of its buildings is a seat in
+     that ranking, and its rarity is the place. The list already exists here
+     — it is the same sort, one slice deeper — so the alternative was a
+     second scanner of the same chain in another project. Two scanners
+     diverge: one has PIPEDOG first, the other second, and a building would
+     change rarity for no reason anyone could name.
+
+     The basket is untouched: still MODEL.seats, still the same rows. This
+     is an addition beside it, not a change to it. */
+  const RANKED_OUT = 10;
+  const ranking = ranked.slice(0, RANKED_OUT);
+
+  /* Icons are picked up only for those in the ranking, and it is the same
+     objects that lie in the basket — the slice copies references, so one
+     pass fills both. Before the slice the list is hundreds of tokens, and a
+     trip to the explorer for each would take down both it and us. */
+  await iconsFor(ranking);
+
+  return { basket, ranking, scanned: list.length, priced: priced.length, alive: all.length, source, at: Date.now() };
 }
 
 /**

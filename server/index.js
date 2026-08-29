@@ -185,6 +185,11 @@ async function state() {
       note: s.note || '',
       buy: s.buy || '',
     },
+    /* The ranking goes out beside the basket and never instead of it: the
+       page draws the six, and only PACKHOOD reads the ten. Falling back to
+       `rows` keeps old snapshots working — a reader gets six instead of ten
+       rather than nothing at all. */
+    ranking: basketRow ? (basketRow.ranking || basketRow.rows) : null,
     basket: basketRow ? {
       rows: basketRow.rows,
       source: basketRow.source,
